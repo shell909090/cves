@@ -1,0 +1,7 @@
+*.pyc
+*.db
+*.sql
+*.log
+*.conf
+
+cves
