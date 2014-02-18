@@ -29,8 +29,8 @@ class ChanAdd(object):
         web.form.Button('create', type='submit', description='create'),
         )
     def POST(self, userid):
-        f = register_form()
-        if f.validates():
+        f = self.form()
+        if not f.validates():
             web.config.db.insert(
                 'channels', user=int(userid),
                 name=form['name'], severity=form['severity'])
@@ -50,20 +50,29 @@ class ChanDel(object):
 
 class ChanSeverity(object):
     SM = {'high': 3, 'medium': 2, 'low': 1}
+    form = web.form.Form(
+        web.form.Dropdown('severity', args=['high', 'medium', 'low'],
+                          description='severity'),
+        web.form.Button('update', type='submit', description='update'),
+        )
     def GET(self, chid):
-        return web.config.render.severity(errmsg='')
+        f = self.form()
+        return web.config.render.severity(form=f, errmsg='')
 
     def POST(self, chid):
-        data = web.input()['data']
-        r = self.SM.get(data)
+        f = self.form()
+        if not f.validates():
+            return web.config.render.severity(form=f, errmsg='invaild form')
+        severity = f.d['severity']
+        r = self.SM.get(severity)
         if r is None:
-            return web.config.render.severity(errmsg='invaild severity')
+            return web.config.render.severity(form=f, errmsg='invaild severity')
         web.config.db.update(
-            'channels', where='id = $ch', vars={'ch': chid}, severity=data)
+            'channels', where='id = $ch', vars={'ch': chid}, severity=severity)
         userid = web.config.db.select(
             'channels', what='user', where='id = $ch',
             vars={'ch': int(chid)})[0]['user']
-        web.seeother('/user/%d' % userid)
+        return web.seeother('/user/%d' % userid)
 
 class ChanEdit(object):
     def GET(self, chid):
