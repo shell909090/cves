@@ -30,11 +30,11 @@ class ChanAdd(object):
         )
     def POST(self, userid):
         f = self.form()
-        if not f.validates():
+        if f.validates():
             web.config.db.insert(
                 'channels', user=int(userid),
-                name=form['name'], severity=form['severity'])
-        web.seeother('/user/%s' % userid)
+                name=f.d['name'], severity=f.d['severity'])
+        return web.seeother('/user/%s' % userid)
 
 class ChanDel(object):
     def POST(self, chid):
@@ -81,6 +81,9 @@ class ChanEdit(object):
 
     def POST(self, chid):
         chid = int(chid)
+        userid = web.config.db.select(
+            'channels', what='user', where='id = $ch',
+            vars={'ch': chid})[0]['user']
         with web.config.db.transaction():
             web.config.db.delete(
                 'produces', where='channel = $ch', vars={'ch': chid})
@@ -91,7 +94,7 @@ class ChanEdit(object):
                 produce, version = line.split(' ', 1)
                 l.append({'channel': chid, 'produce': produce, 'version': version})
             web.config.db.multiple_insert('produces', l)
-        return web.seeother('/user/%s' % chid)
+        return web.seeother('/user/%s' % userid)
 
 class ChanImport(object):
     def GET(self, chid):
@@ -99,6 +102,9 @@ class ChanImport(object):
 
     def POST(self, chid):
         chid = int(chid)
+        userid = web.config.db.select(
+            'channels', what='user', where='id = $ch',
+            vars={'ch': chid})[0]['user']
         with web.config.db.transaction():
             for line in web.input()['data'].splitlines():
                 line = line.strip()
@@ -110,7 +116,7 @@ class ChanImport(object):
                     produce=produce, version=version):
                     web.config.db.insert(
                         'produces', channel=int(chid), produce=produce, version=version)
-        return web.seeother('/user/%s' % chid)
+        return web.seeother('/user/%s' % userid)
 
 def getprods(chid):
     prods = list(web.config.db.select(
