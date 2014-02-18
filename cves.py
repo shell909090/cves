@@ -30,9 +30,9 @@ def get_etag(filepath):
     if not path.exists(filepath + '.etag'): return
     with open(filepath + '.etag', 'rb') as fi: return fi.read()
 
-def xfetchurl(url):
+def xfetchurl(url, tmp):
     logging.info('download %s.' % url)
-    filepath = path.join(cfg.get('urls', 'tmp'), path.basename(url))
+    filepath = path.join(tmp, path.basename(url))
     req = urllib2.Request(url)
     etag = get_etag(filepath)
     if etag is not None:
@@ -56,6 +56,6 @@ def xfetchurl(url):
         fo.write(etag)
     return open(filepath, 'rb')
 
-def getcves(urls):
+def getcves(urls, tmp):
     for url in urls:
-        for i in parse_nvdcve(xfetchurl(url)): yield i
+        for i in parse_nvdcve(xfetchurl(url, tmp)): yield i

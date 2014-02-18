@@ -1,0 +1,44 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+  <head>
+    <title>users</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <meta name="author" content="shell">
+  </head>
+
+  <body>
+    <form action="/chan/add/${userid}" method="post">
+      ${form.render()}
+    </form>
+    <table>
+      <tr>
+	<td>name</td>
+	<td>severity</td>
+	<td>edit</td>
+	<td>import</td>
+	<td>run</td>
+	<td>cleanup</td>
+	<td>del</td>
+      </tr>
+      % for chan in chans:
+      <tr>
+	<td><a href="/chan/export/${chan['id']}">${chan['name']}</td>
+	<td><a href="/chan/sev/${chan['id']}">${chan['severity']}</td>
+	<td><a href="/chan/edit/${chan['id']}">edit</td>
+	<td><a href="/chan/import/${chan['id']}">import</td>
+	<td><a href="/chan/run/${chan['id']}">run</td>
+	<td>
+	  <form action="/chan/cleanup/${chan['id']}" method="post">
+	    <input type="submit" value="cleanup"/>
+	  </form>
+	</td>
+	<td>
+	  <form action="/chan/del/${chan['id']}" method="post">
+	    <input type="submit" value="del"/>
+	  </form>
+	</td>
+      </tr>
+      % endfor
+    </table>
+  </body>
+</html>
