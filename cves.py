@@ -32,16 +32,16 @@ def get_etag(filepath):
     with open(filepath + '.etag', 'rb') as fi: return fi.read()
 
 def download(url, headers):
-    for i in xrange(cfg.getint('main', 'retry')):
+    for i in xrange(retry):
         try:
             return requests.get(
-                url, headers=headers, timeout=cfg.getfloat('main', 'timeout'))
+                url, headers=headers, timeout=timeout)
         except requests.exceptions.Timeout: pass
     raise requests.exceptions.Timeout()
 
-def xfetchurl(url):
+def xfetchurl(url, tmp):
     logging.info('download %s.' % url)
-    filepath = path.join(cfg.get('urls', 'tmp'), path.basename(url))
+    filepath = path.join(tmp, path.basename(url))
     headers, etag = {}, get_etag(filepath)
     if etag is not None:
         logging.debug('etag found: %s' % etag)
@@ -60,6 +60,6 @@ def xfetchurl(url):
         fo.write(r.headers['Etag'])
     return open(filepath, 'rb')
 
-def getcves(urls):
+def getcves(urls, tmp):
     for url in urls:
-        for i in parse_nvdcve(xfetchurl(url)): yield i
+        for i in parse_nvdcve(xfetchurl(url, tmp)): yield i

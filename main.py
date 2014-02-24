@@ -7,12 +7,21 @@
 '''
 import os, sys, web, base64, getopt
 from os import path
+from web.contrib.template import render_mako
 import utils
+from mgr import *
 
 cfg = utils.getcfg(['cves.conf', '/etc/cves.conf'])
+web.config.cfg = cfg
 DEBUG = not path.isfile('RELEASE')
 web.config.debug = DEBUG
 web.config.rootdir = path.dirname(__file__)
+web.config.db = web.database(**dict(cfg.items('db')))
+web.config.render = render_mako(
+    directories = ['templates'],  imports = ['import web'],
+    default_filters = ['decode.utf8'], filesystem_checks = DEBUG,
+    module_directory = None if DEBUG else '/tmp/mako_modules',
+    input_encoding = 'utf-8', output_encoding = 'utf-8')
 
 def serve_file(filepath):
     class ServeFile(object):
@@ -29,33 +38,16 @@ def serve_path(dirname):
     return ServePath
 
 urls = (
-    '/static/(.*)', serve_path('static/'),
-    # info actions
-    '/', serve_file('static/home.html'),
-    '/list.json', lxcweb.ListJson,
-    '/info/(.*).json', lxcweb.InfoJson,
-    '/ps/(.*).json', lxcweb.PsJson,
-    '/ps/.*', serve_file('static/ps.html'),
-    '/config/(.*).json', lxcweb.ConfigJson,
-    '/fstab/(.*).json', lxcweb.FstabJson,
-    '/config/.*', serve_file('static/config.html'),
-
-    # image actions
-    '/clone/(.*)/(.*)', lxcweb.Clone,
-    '/create/(.*)', lxcweb.Create,
-    '/destroy/(.*)', lxcweb.Destroy,
-    '/merge/(.*)', lxcweb.Merge,
-
-    # container actions
-    '/start/(.*)', lxcweb.Start,
-    '/stop/(.*)', lxcweb.Stop,
-    '/shutdown/(.*)', lxcweb.Shutdown,
-    '/reboot/(.*)', lxcweb.Reboot,
-    '/freeze/(.*)', lxcweb.Freeze,
-    '/unfreeze/(.*)', lxcweb.Unfreeze,
-
-    # runtime actions
-    '/attach/(.*)', lxcweb.Attach,
+    '/users/', UserList,
+    r'/user/(\d*)', ChanList,
+    r'/chan/add/(\d*)', ChanAdd,
+    r'/chan/del/(\d*)', ChanDel,
+    r'/chan/sev/(\d*)', ChanSeverity,
+    r'/chan/edit/(\d*)', ChanEdit,
+    r'/chan/import/(\d*)', ChanImport,
+    r'/chan/export/(\d*)', ChanExport,
+    r'/chan/cleanup/(\d*)', ChanCleanup,
+    r'/chan/run/(\d*)', ChanRun,
 )
 app = web.application(urls)
 
@@ -70,7 +62,7 @@ def main():
         print main.__doc__
         return
 
-    port = int(optdict.get('-p') or maincfg.get('port') or 9872)
+    port = int(optdict.get('-p') or cfg.get('main', 'port') or 9872)
     addr = (cfg.get('main', 'addr'), cfg.getint('main', 'port'))
         
     from gevent.pywsgi import WSGIServer
