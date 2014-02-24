@@ -8,8 +8,7 @@ import os, sys, time, sqlite3, logging, cStringIO
 from os import path
 from datetime import datetime
 from email.mime.text import MIMEText
-import web
-import utils
+import web, utils
 
 rootdir = path.dirname(__file__)
 os.chdir(rootdir)

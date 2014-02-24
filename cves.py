@@ -4,8 +4,9 @@
 @date: 2013-12-20
 @author: shell.xu
 '''
-import shutil, urllib2, logging, datetime
+import logging, datetime
 from os import path
+import requests
 from lxml import etree
 
 NS = 'http://nvd.nist.gov/feeds/cve/1.2'
@@ -30,30 +31,33 @@ def get_etag(filepath):
     if not path.exists(filepath + '.etag'): return
     with open(filepath + '.etag', 'rb') as fi: return fi.read()
 
+def download(url, headers):
+    for i in xrange(cfg.getint('main', 'retry')):
+        try:
+            return requests.get(
+                url, headers=headers, timeout=cfg.getfloat('main', 'timeout'))
+        except requests.exceptions.Timeout: pass
+    raise requests.exceptions.Timeout()
+
 def xfetchurl(url):
     logging.info('download %s.' % url)
     filepath = path.join(cfg.get('urls', 'tmp'), path.basename(url))
-    req = urllib2.Request(url)
-    etag = get_etag(filepath)
+    headers, etag = {}, get_etag(filepath)
     if etag is not None:
-        logging.debug('etag found')
-        req.add_header('If-None-Match', etag)
+        logging.debug('etag found: %s' % etag)
+        headers['If-None-Match'] = etag
 
-    try: fi = urllib2.urlopen(req)
-    except urllib2.HTTPError as err:
-        if err.code == 304:
-            logging.debug('not modify, use cache.')
-            return open(filepath, 'rb')
-        raise
+    r = download(url, headers)
+    if r.status_code == 304:
+        logging.debug('not modify, use cache.')
+        return open(filepath, 'rb')
 
     with open(filepath, 'wb') as fo:
-        shutil.copyfileobj(fi, fo)
-        fi.close()
+        fo.write(r.content)
 
     logging.debug('new data, update file and etag.')
-    etag = fi.info().getheader('ETag')
     with open(filepath + '.etag', 'wb') as fo:
-        fo.write(etag)
+        fo.write(r.headers['Etag'])
     return open(filepath, 'rb')
 
 def getcves(urls):
