@@ -24,7 +24,12 @@ def version_compare(v1, v2):
 
 SM = {'high': 3, 'medium': 2, 'low': 1}
 def severity_filter(s):
-    return lambda v: SM[v['severity'].lower()] >= SM[s.lower()]
+    def inner(v):
+        if v.get('severity') is None:
+            logging.warning('severity of valu is none: %s' % str(v))
+            return True
+        return SM[v['severity'].lower()] >= SM[s.lower()]    
+    return inner
 
 def getcves(cfg):
     urls = ((k, v) for k, v in cfg.items('urls') if k.startswith('url'))
