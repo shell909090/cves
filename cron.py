@@ -7,12 +7,12 @@
 import os, time, logging
 from os import path
 from email.mime.text import MIMEText
-import web, utils, core
+import web, cves
 
 rootdir = path.dirname(__file__)
 os.chdir(rootdir)
 
-cfg = utils.getcfg(['cves.conf', '/etc/cves.conf'])
+cfg = cves.getcfg(['cves.conf', '/etc/cves.conf'])
 db = web.database(**dict(cfg.items('db')))
 
 def sendmail(srv, sender, i, body):
@@ -24,29 +24,23 @@ def sendmail(srv, sender, i, body):
     srv.sendmail(sender, msg['To'].split(','), msg.as_string())
 
 def main():
-    utils.initlog(cfg.get('log', 'loglevel'), cfg.get('log', 'logfile'))
+    cves.initlog(cfg.get('log', 'level'), cfg.get('log', 'file'))
     sender = cfg.get('email', 'mail')
-    cvelist = list(core.getcves(cfg))
+    cvelist = list(cves.getcves(cfg))
     logging.debug('cvelist length %d' % len(cvelist))
 
+    dryrun = cfg.getboolean('main', 'dryrun')
     db.query('BEGIN')
-    if cfg.getboolean('main', 'dryrun'):
+    with cves.with_emailconfig(cfg, dryrun) as srv:
         for i in db.select(
                 ['channels', 'users'],
                 what='channels.id, name, email, user, severity',
                 where='channels.user = users.id'):
-            c = core.Chan(db, i, cfg.getboolean('main', 'dryrun'))
-            body = c.geninfo(cvelist)
-            print body
-    else:
-        with utils.with_emailconfig(cfg) as srv:
-            for i in db.select(
-                    ['channels', 'users'],
-                    what='channels.id, name, email, user, severity',
-                    where='channels.user = users.id'):
-                c = core.Chan(db, i, cfg.getboolean('main', 'dryrun'))
-                body = c.geninfo(cvelist)
-                if body: sendmail(srv, sender, i, body)
+            body = cves.chan_with_db(db, i)
+            if not body: continue
+            if not dryrun:
+                sendmail(srv, sender, i, body)
+            else: print body
 
     # remove readed record for more then half a year
     db.delete('readed', where='uptime < $ti',

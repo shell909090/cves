@@ -8,11 +8,6 @@ import os, sys, logging
 import web
 import core
 
-class UserList(object):
-    def GET(self):
-        users = web.config.db.select('users', what='id, email')
-        return web.config.render.users(users=[dict(user) for user in users])
-
 class ChanList(object):
     def GET(self, userid):
         f = ChanAdd.form()
@@ -138,17 +133,22 @@ class ChanCleanup(object):
             'readed', where='channel = $ch', vars={'ch': int(chid)})
         web.seeother('/user/%d' % userid)
 
-def getcves():
-    urls = ((k, v) for k, v in web.config.cfg.items('urls')
-            if k.startswith('url'))
-    urls = map(lambda x:x[1], sorted(urls, key=lambda x:x[0]))
-    return cves.getcves(urls, cfg.get('urls', 'tmp'))
+# class ChanRun(object):
+#     def GET(self, chid):
+#         i = web.config.db.select(
+#             ['channels', 'users'],
+#             what='channels.id, name, email, user, severity',
+#             where='channels.id = $ch', vars={'ch': int(chid)})[0]
+#         c = core.Chan(web.config.db, i, True)
+#         return c.geninfo(core.getcves(web.config.cfg))
 
-class ChanRun(object):
-    def GET(self, chid):
-        i = web.config.db.select(
-            ['channels', 'users'],
-            what='channels.id, name, email, user, severity',
-            where='channels.id = $ch', vars={'ch': int(chid)})[0]
-        c = core.Chan(web.config.db, i, True)
-        return c.geninfo(core.getcves(web.config.cfg))
+app_chan = web.application((
+    r'/add/(\d*)', ChanAdd,
+    r'/del/(\d*)', ChanDel,
+    r'/sev/(\d*)', ChanSeverity,
+    r'/edit/(\d*)', ChanEdit,
+    r'/import/(\d*)', ChanImport,
+    r'/export/(\d*)', ChanExport,
+    r'/cleanup/(\d*)', ChanCleanup,
+    # r'/run/(\d*)', ChanRun,
+))

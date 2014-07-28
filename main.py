@@ -8,10 +8,9 @@
 import os, sys, web, base64, getopt
 from os import path
 from web.contrib.template import render_mako
-import utils
-from mgr import *
+import cves
 
-cfg = utils.getcfg(['cves.conf', '/etc/cves.conf'])
+cfg = cves.getcfg(['cves.conf', '/etc/cves.conf'])
 web.config.cfg = cfg
 DEBUG = not path.isfile('RELEASE')
 web.config.debug = DEBUG
@@ -37,23 +36,22 @@ def serve_path(dirname):
                 return fi.read()
     return ServePath
 
+class UserList(object):
+    def GET(self):
+        users = web.config.db.select('users', what='id, email')
+        return web.config.render.users(users=[dict(user) for user in users])
+
+import mgr
 urls = (
     '/users/', UserList,
-    r'/user/(\d*)', ChanList,
-    r'/chan/add/(\d*)', ChanAdd,
-    r'/chan/del/(\d*)', ChanDel,
-    r'/chan/sev/(\d*)', ChanSeverity,
-    r'/chan/edit/(\d*)', ChanEdit,
-    r'/chan/import/(\d*)', ChanImport,
-    r'/chan/export/(\d*)', ChanExport,
-    r'/chan/cleanup/(\d*)', ChanCleanup,
-    r'/chan/run/(\d*)', ChanRun,
+    r'/user/(\d*)', mgr.ChanList,
+    r'/chan', mgr.app_chan
 )
 app = web.application(urls)
 
 def main():
     web.config.users = dict(cfg.items('users'))
-    utils.initlog(cfg.get('log', 'loglevel'), cfg.get('log', 'logfile'))
+    cves.initlog(cfg.get('log', 'loglevel'), cfg.get('log', 'logfile'))
     if web.config.rootdir: os.chdir(web.config.rootdir)
 
     optlist, args = getopt.getopt(sys.argv[1:], 'dhp:')
