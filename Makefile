@@ -7,6 +7,7 @@
 
 build:
 	sqlite3 cves.db < cves.sql
+	sqlite3 cves.db < dat.sql
 
 clean:
 	rm -f cves.db

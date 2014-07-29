@@ -2,6 +2,5 @@
 *.db
 *.sql
 *.log
-*.conf
 
 cves

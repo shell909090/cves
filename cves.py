@@ -84,7 +84,7 @@ def parse_nvdcve(stream):
                'desc': desc, 'refs': refs}
 
 def open_cve_source(url, cfg):
-    tmpdir = cfg.get('main', 'tmp')
+    tmpdir = cfg.get('urls', 'tmp')
     filepath = path.join(tmpdir, path.basename(url))
     r = download(url, filepath + '.etag',
                  timeout=cfg.getfloat('main', 'timeout'),
@@ -151,9 +151,9 @@ def merge_prod(prod):
                 rslt[n] = v
     return rslt
 
-def gen_chan_body(src, prod, id, readed=None, servity=None):
+def gen_chan_body(src, prod, id, readed=None, severity=None):
     logging.info('new chan %s' % id)
-    if servity: src = filter(severity_filter(severity), src)
+    if severity: src = filter(severity_filter(severity), src)
     if readed: src = filter(readed_filter(readed), src)
     stream, readed = cStringIO.StringIO(), []
     for cve in filter(vuln(merge_prod(prod)), src):
@@ -166,8 +166,8 @@ def gen_chan_body(src, prod, id, readed=None, servity=None):
         readed.append(cve['name'])
     return stream.getvalue().strip(), readed
 
-def chan_with_db(db, dbobj, dryrun=False):
-    id = dbobj['id']
+def chan_with_db(src, db, ch, dryrun=False):
+    id = ch['id']
     prod, readed = {}, set()
     for i in db.select(
             'produces', what='produce, version',
@@ -175,55 +175,11 @@ def chan_with_db(db, dbobj, dryrun=False):
         prod[i['produce']] = str(i['version'])
     for i in db.select(
             'readed', what='cvename',
-            where='channel = $cid', vars={'cid': id}):
+            where='channel=$cid', vars={'cid': id}):
         readed.add(i['cvename'])
     body, newreaded = gen_chan_body(
-        cvelist, prod, id, readed, dbobj['severity'])
+        src, prod, id, readed, ch['severity'])
     if not dryrun:
         for name in newreaded:
-            db.insert('readed', channel=id,
-                      cvename=name, uptime=int(time.time()))
+            db.insert('readed', channel=id, cvename=name)
     return body
-
-# class Chan(object):
-#     def __init__(self, db, dbobj, dryrun=False):
-#         self.db, self.dbobj, self.id = db, dbobj, dbobj['id']
-#         logging.info('new chan %s' % self.id)
-#         self.dryrun = dryrun
-#         self.prod, self.readed = {}, set()
-#         for i in self.db.select(
-#                 'produces', what='produce, version',
-#                 where='channel=$cid', vars={'cid': self.id}):
-#             self.prod[i['produce']] = str(i['version'])
-#         for i in self.db.select(
-#                 'readed', what='cvename',
-#                 where='channel = $cid', vars={'cid': self.id}):
-#             self.readed.add(i['cvename'])
-#     def vuln(self, cves):
-#         for cve in cves:
-#             if cve['name'] in self.readed: continue
-#             for p, v1 in self.prod.iteritems():
-#                 if cve['produce'].find(p) == -1: continue
-#                 if v1 == 'all':
-#                     yield (cve, cve['vers'])
-#                     continue
-#                 for v in cve['vers']:
-#                     if cves.version_compare(v1, v) <= 0:
-#                         logging.debug('%s %s %s' % (p, v1, v))
-#                         yield (cve, v)
-#                         break
-#     def format(self, rslt, stream):
-#         for cve, v in rslt:
-#             stream.write('\t%s [%s] to %s(%s)\n' % (
-#                 cve['name'], cve['severity'], cve['produce'], v))
-#             stream.write('\t%s\n' % cve['desc'])
-#             for r in cve['refs']: stream.write('\t * %s\n' % r)
-#             stream.write('\n')
-#             if not self.dryrun:
-#                 self.db.insert('readed', channel=self.id,
-#                           cvename=cve['name'], uptime=int(time.time()))
-#     def geninfo(self, src):
-#         src = filter(cves.severity_filter(self.dbobj['severity']), src)
-#         buf = cStringIO.StringIO()
-#         self.format(self.vuln(src), buf)
-#         return buf.getvalue().strip()
