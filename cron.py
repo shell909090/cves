@@ -14,7 +14,7 @@ rootdir = path.dirname(__file__)
 if rootdir: os.chdir(rootdir)
 
 def main():
-    cfg = cves.getcfg(['cves.conf', '/etc/cves.conf'])
+    cfg = cves.getcfg(['cves.ini', '/etc/cves.ini'])
     cves.initlog(cfg.get('log', 'level'), cfg.get('log', 'file'))
     engine = sqlalchemy.create_engine(cfg.get('db', 'url'))
     sess = sqlalchemy.orm.sessionmaker(bind=engine)()
@@ -38,6 +38,7 @@ def main():
             else: print body
 
     # remove readed record for more then half a year
-    # db.delete('readed', where='uptime < CURRENT_TIMESTAMP - 180 * 86400')
+    sess.query(Readed).filter(Readed.ts < 'CURRENT_TIMESTAMP - 180 * 86400').delete()
+    sess.commit()
 
 if __name__ == '__main__': main()

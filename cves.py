@@ -49,7 +49,8 @@ def download(url, etagpath, retry=3, timeout=10):
     headers = {}
 
     if path.exists(etagpath):
-        if time.time() - os.stat(etagpath).st_mtime < 3600:
+        # FIXME:
+        if time.time() - os.stat(etagpath).st_mtime < 36000:
             logging.debug('etag less then a hour')
             return
         with open(etagpath, 'rb') as fi: etag = fi.read()

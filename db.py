@@ -50,6 +50,13 @@ class Channels(Base):
             sess.commit()
         return body
 
+    def import_stream(self, stream):
+        for line in stream:
+            line = line.strip()
+            if not line: continue
+            prod, ver = line.split(' ', 1)
+            yield Produces(chan=self, prod=prod, ver=ver)
+
 class Produces(Base):
     __tablename__ = 'produces'
     id = Column(Integer, primary_key=True)
@@ -74,7 +81,7 @@ def main():
         print main.__doc__
         return
 
-    cfg = cves.getcfg(['cves.conf', '/etc/cves.conf'])
+    cfg = cves.getcfg(['cves.ini', '/etc/cves.ini'])
     cves.initlog(cfg.get('log', 'level'), cfg.get('log', 'file'))
     engine = sqlalchemy.create_engine(cfg.get('db', 'url'))
     sess = sqlalchemy.orm.sessionmaker(bind=engine)()
@@ -88,10 +95,7 @@ def main():
     elif '-n' in optdict:
         ch = Channels(name=args[0], username=args[1], severity=args[2])
         sess.add(ch)
-        for line in sys.stdin:
-            prod, ver = line.strip().split(' ', 1)
-            p = Produces(chan=ch, prod=prod, ver=ver)
-            sess.add(p)
+        for p in import_stream(sys.stdin, sess, ch): sess.add(p)
         sess.commit()
 
 if __name__ == '__main__': main()
