@@ -39,7 +39,7 @@ application = SessionMiddleware(app, session_opts)
 def _static(filename):
     return bottle.static_file(filename, root='static/')
 
-import mgr
+import usr, mgr
 
 def main():
     optlist, args = getopt.getopt(sys.argv[1:], 'dhp:')

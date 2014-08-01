@@ -8,55 +8,20 @@ import os, sys, logging
 import bottle, cves
 from bottle import route, template, request, response, redirect
 from db import *
+import usr
 
-logger = logging.getLogger('users')
+logger = logging.getLogger('channel')
 app = bottle.default_app()
 sess = app.config['db.session']
 
-@route('/login')
-def _login():
-    return template('login.html')
-
-@route('/login', method='POST')
-def _login():
-    session = request.environ.get('beaker.session')
-    username = request.forms.get('username')
-    password = request.forms.get('password')
-    logger.debug("login with %s" % username)
-    user = sess.query(Users).filter_by(username=username).scalar()
-    if not user or not check_pass(password, user.passwd):
-        errmsg = "login failed %s." % username
-        logger.info(errmsg)
-        return template('login.html', errmsg=errmsg)
-    logger.info("login successed %s." % username)
-    session['username'] = username
-    return bottle.redirect(request.query.next or '/')
-
-def chklogin(perm=None, next=None):
-    def receiver(func):
-        def _inner(*p, **kw):
-            session = request.environ.get('beaker.session')
-            if 'username' not in session:
-                return redirect('/login?next=%s' % (next or request.path))
-            return func(session, *p, **kw)
-        return _inner
-    return receiver
-
-@route('/logout')
-@chklogin(next='/')
-def _logout(session):
-    if 'username' in session:
-        del session['username']
-    return bottle.redirect(request.query.next or '/')
-
 @route('/')
-@chklogin()
+@usr.chklogin()
 def _list(session):
     chs = sess.query(Channels).filter_by(username=session['username']).order_by(Channels.id)
     return template('chs.html', chs=chs)
 
 @route('/add', method='POST')
-@chklogin()
+@usr.chklogin()
 def _add(session):
     sess.add(Channels(
         name=request.forms.get('name'),
@@ -66,7 +31,7 @@ def _add(session):
     return bottle.redirect('/')
 
 @route('/del/<id:int>')
-@chklogin()
+@usr.chklogin()
 def _del(session, id):
     ch = sess.query(Channels).filter_by(id=id).scalar()
     if not ch: return 'channel not exists.'
@@ -75,17 +40,17 @@ def _del(session, id):
     return bottle.redirect('/')
 
 @route('/sev/<id:int>')
-@chklogin()
+@usr.chklogin()
 def _sev(session, id):
     pass
 
 @route('/edit/<id:int>')
-@chklogin()
+@usr.chklogin()
 def _edit(session, id):
     return template('imp.html', data=''.join(getprods(id)))
 
 @route('/edit/<id:int>', method='POST')
-@chklogin()
+@usr.chklogin()
 def _edit(session, id):
     ch = sess.query(Channels).filter_by(id=id).scalar()
     if not ch: return 'channel not exists.'
@@ -95,12 +60,12 @@ def _edit(session, id):
     sess.commit()
 
 @route('/imp/<id:int>')
-@chklogin()
+@usr.chklogin()
 def _import(session, id):
     return template('imp.html', data='')
 
 @route('/imp/<id:int>', method='POST')
-@chklogin()
+@usr.chklogin()
 def _import(session, id):
     ch = sess.query(Channels).filter_by(id=id).scalar()
     if not ch: return 'channel not exists.'
@@ -114,20 +79,20 @@ def getprods(id):
         yield '%s %s\n' % (i.prod, i.ver)
 
 @route('/exp/<id:int>')
-@chklogin()
+@usr.chklogin()
 def _export(session, id):
     response.set_header('Content-Type', 'text/plain')
     return getprods(id)
 
 @route('/clean/<id:int>')
-@chklogin()
+@usr.chklogin()
 def _cleanup(session, id):
     sess.query(Readed).filter_by(chanid=id).delete()
     sess.commit()
     return bottle.redirect('/')
 
 @route('/run/<id:int>')
-@chklogin()
+@usr.chklogin()
 def _run(session, id):
     ch = sess.query(Channels).filter_by(id=id).scalar()
     cfg = app.config['cfg']
