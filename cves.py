@@ -4,7 +4,8 @@
 @date: 2013-12-20
 @author: shell.xu
 '''
-import re, os, time, json, gzip, smtplib, logging, datetime, cStringIO
+import re, os, time, json, gzip, smtplib
+import logging, datetime, cStringIO
 from os import path
 from contextlib import contextmanager
 
@@ -165,21 +166,3 @@ def gen_chan_body(src, prod, id, readed=None, severity=None):
         stream.write('\n')
         readed.append(cve['name'])
     return stream.getvalue().strip(), readed
-
-def chan_with_db(src, db, ch, dryrun=False):
-    id = ch['id']
-    prod, readed = {}, set()
-    for i in db.select(
-            'produces', what='produce, version',
-            where='channel=$cid', vars={'cid': id}):
-        prod[i['produce']] = str(i['version'])
-    for i in db.select(
-            'readed', what='cvename',
-            where='channel=$cid', vars={'cid': id}):
-        readed.add(i['cvename'])
-    body, newreaded = gen_chan_body(
-        src, prod, id, readed, ch['severity'])
-    if not dryrun:
-        for name in newreaded:
-            db.insert('readed', channel=id, cvename=name)
-    return body

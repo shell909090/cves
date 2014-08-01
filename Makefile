@@ -6,8 +6,9 @@
 ## X-URL: 
 
 build:
-	sqlite3 cves.db < cves.sql
-	sqlite3 cves.db < dat.sql
+	python db.py -b
+	python db.py -u shell909090@gmail.com 123
+	python db.py -n 'home' 'shell909090@gmail.com' 'low' < home.list
 
 clean:
 	rm -f cves.db

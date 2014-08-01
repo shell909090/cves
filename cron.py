@@ -7,39 +7,37 @@
 import os, time, logging
 from os import path
 from email.mime.text import MIMEText
-import web, cves
+import sqlalchemy, cves
+from db import *
 
 rootdir = path.dirname(__file__)
-os.chdir(rootdir)
-
-cfg = cves.getcfg(['cves.conf', '/etc/cves.conf'])
-db = web.database(**dict(cfg.items('db')))
+if rootdir: os.chdir(rootdir)
 
 def main():
+    cfg = cves.getcfg(['cves.conf', '/etc/cves.conf'])
     cves.initlog(cfg.get('log', 'level'), cfg.get('log', 'file'))
+    engine = sqlalchemy.create_engine(cfg.get('db', 'url'))
+    sess = sqlalchemy.orm.sessionmaker(bind=engine)()
+
     sender = cfg.get('email', 'mail')
     cvelist = list(cves.getcves(cfg))
     logging.debug('cvelist length %d' % len(cvelist))
 
     dryrun = cfg.getboolean('main', 'dryrun')
-    db.query('BEGIN')
     with cves.with_emailconfig(cfg, dryrun) as srv:
-        for ch in db.select(
-                ['channels', 'users'],
-                what='channels.id, name, severity, users.email',
-                where='channels.user=users.id'):
-            body = cves.chan_with_db(cvelist, db, ch, dryrun=dryrun)
+        for ch in sess.query(Channels):
+            body = ch.gen_body(cvelist, sess, dryrun=dryrun)
             if not body: continue
             if not dryrun:
                 msg = MIMEText(body)
-                msg['Subject'] = 'CVE for %s' % ch['name']
+                msg['Subject'] = 'CVE for %s' % ch.name
                 msg['From'] = sender
-                msg['To'] = ch['email']
+                msg['To'] = ch.user.username
                 logging.info('send email to %s' % msg['to'])
                 srv.sendmail(sender, msg['To'].split(','), msg.as_string())
             else: print body
 
     # remove readed record for more then half a year
-    db.delete('readed', where='uptime < CURRENT_TIMESTAMP - 180 * 86400')
+    # db.delete('readed', where='uptime < CURRENT_TIMESTAMP - 180 * 86400')
 
 if __name__ == '__main__': main()

@@ -7,65 +7,50 @@
 '''
 import os, sys, web, base64, getopt
 from os import path
-from web.contrib.template import render_mako
-import cves
+import bottle, cves
+from beaker.middleware import SessionMiddleware
+import sqlalchemy, sqlalchemy.orm
 
-cfg = cves.getcfg(['cves.conf', '/etc/cves.conf'])
-web.config.cfg = cfg
-DEBUG = not path.isfile('RELEASE')
-web.config.debug = DEBUG
-web.config.rootdir = path.dirname(__file__)
-web.config.db = web.database(**dict(cfg.items('db')))
-web.config.render = render_mako(
-    directories = ['templates'],  imports = ['import web'],
-    default_filters = ['decode.utf8'], filesystem_checks = DEBUG,
-    module_directory = None if DEBUG else '/tmp/mako_modules',
-    input_encoding = 'utf-8', output_encoding = 'utf-8')
+logger = logging.getLogger('main')
+app = bottle.default_app()
 
-def serve_file(filepath):
-    class ServeFile(object):
-        def GET(self):
-            with open(filepath, 'rb') as fi:
-                return fi.read()
-    return ServeFile
+optlist, args = getopt.getopt(sys.argv[1:], 'a:c:hp:')
+optdict = dict(optlist)
 
-def serve_path(dirname):
-    class ServePath(object):
-        def GET(self, p):
-            with open(path.join(dirname, p), 'rb') as fi:
-                return fi.read()
-    return ServePath
+app.config.load_config(optdict.get('-c', 'cves.ini'))
+engine = sqlalchemy.create_engine(app.config['db.url'])
+sess = sqlalchemy.orm.sessionmaker(bind=engine)()
+app.config['db.engine'] = engine
+app.config['db.session'] = sess
 
-class UserList(object):
-    def GET(self):
-        users = web.config.db.select('users', what='id, email')
-        return web.config.render.users(users=[dict(user) for user in users])
+cves.initlog(app.config.get('log.level', 'INFO'),
+             app.config.get('log.file', ''))
+
+session_opts = {
+    'session.type': 'ext:database',
+    'session.url': app.config['db.url'],
+    'session.lock_dir': '/var/lock',
+    'session.cookie_expires': 3600,
+    'session.auto': True
+}
+application = SessionMiddleware(app, session_opts)
+
+@bottle.route('/static/<filename:path>')
+def _static(filename):
+    return bottle.static_file(filename, root='static/')
 
 import mgr
-urls = (
-    '/users/', UserList,
-    r'/user/(\d*)', mgr.ChanList,
-    r'/chan', mgr.app_chan
-)
-app = web.application(urls)
 
 def main():
-    web.config.users = dict(cfg.items('users'))
-    cves.initlog(cfg.get('log', 'loglevel'), cfg.get('log', 'logfile'))
-    if web.config.rootdir: os.chdir(web.config.rootdir)
-
     optlist, args = getopt.getopt(sys.argv[1:], 'dhp:')
     optdict = dict(optlist)
     if '-h' in optdict:
         print main.__doc__
         return
 
-    port = int(optdict.get('-p') or cfg.get('main', 'port') or 9872)
-    addr = (cfg.get('main', 'addr'), cfg.getint('main', 'port'))
-        
-    from gevent.pywsgi import WSGIServer
-    print 'service port :%d' % cfg.getint('main', 'port')
-    WSGIServer(addr, app.wsgifunc()).serve_forever()
+    host = optdict.get('-a', 'localhost')
+    port = int(optdict.get('-p') or '8080')
+    bottle.run(app=application, host=host, port=port, reloader=True)
 
 if __name__ == '__main__': main()
 else: application = app.wsgifunc()
