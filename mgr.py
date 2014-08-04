@@ -98,4 +98,5 @@ def _run(session, id):
     cfg = app.config['cfg']
     cvelist = list(cves.getcves(cfg))
     dryrun = cfg.getboolean('main', 'dryrun')
+    # TODO: don't use readed
     return ch.gen_body(cvelist, sess, dryrun=dryrun)

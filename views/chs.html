@@ -42,14 +42,14 @@
 	<tbody>
 	  % for ch in chs:
 	  <tr>
-	    <td><a href="/exp/{{ch.id}}">{{ch.name}}</a></td>
+	    <td><a href="/edit/{{ch.id}}">{{ch.name}}</a></td>
 	    <td><a href="/sev/{{ch.id}}">{{ch.severity}}</a></td>
 	    <td>
-	      <a href="/edit/{{ch.id}}">edit</a>
-	      <a href="/del/{{ch.id}}">del</a>
-	      <a href="/clean/{{ch.id}}">cleanup</a>
 	      <a href="/imp/{{ch.id}}">import</a>
+	      <a href="/exp/{{ch.id}}">export</a>
+	      <a href="/clean/{{ch.id}}">cleanup</a>
 	      <a href="/run/{{ch.id}}">run</a>
+	      <a href="/del/{{ch.id}}">del</a>
 	    </td>
 	  </tr>
 	  % end
