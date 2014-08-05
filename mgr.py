@@ -17,7 +17,8 @@ sess = app.config['db.session']
 @route('/')
 @usr.chklogin()
 def _list(session):
-    chs = sess.query(Channels).filter_by(username=session['username']).order_by(Channels.id)
+    chs = sess.query(Channels).filter_by(
+        username=session['username']).order_by(Channels.id)
     return template('chs.html', chs=chs)
 
 @route('/add', method='POST')
@@ -35,6 +36,9 @@ def _add(session):
 def _del(session, id):
     ch = sess.query(Channels).filter_by(id=id).scalar()
     if not ch: return 'channel not exists.'
+    if ch.username != session['username']:
+        return 'channel not belongs to you'
+
     sess.delete(ch)
     sess.commit()
     return bottle.redirect('/')
@@ -42,11 +46,35 @@ def _del(session, id):
 @route('/sev/<id:int>')
 @usr.chklogin()
 def _sev(session, id):
-    pass
+    ch = sess.query(Channels).filter_by(id=id).scalar()
+    if not ch: return 'channel not exists.'
+    if ch.username != session['username']:
+        return 'channel not belongs to you'
+
+    return template('sev.html', ch=ch)
+
+@route('/sev/<id:int>', method='POST')
+@usr.chklogin()
+def _sev(session, id):
+    ch = sess.query(Channels).filter_by(id=id).scalar()
+    if not ch: return 'channel not exists.'
+    if ch.username != session['username']:
+        return 'channel not belongs to you'
+
+    severity = request.forms.get('severity')
+    if severity not in cves.SM: return 'invalid severity'
+    ch.severity = severity
+    sess.commit()
+    return bottle.redirect('/')
 
 @route('/edit/<id:int>')
 @usr.chklogin()
 def _edit(session, id):
+    ch = sess.query(Channels).filter_by(id=id).scalar()
+    if not ch: return 'channel not exists.'
+    if ch.username != session['username']:
+        return 'channel not belongs to you'
+
     return template('imp.html', data=''.join(getprods(id)))
 
 @route('/edit/<id:int>', method='POST')
@@ -54,6 +82,9 @@ def _edit(session, id):
 def _edit(session, id):
     ch = sess.query(Channels).filter_by(id=id).scalar()
     if not ch: return 'channel not exists.'
+    if ch.username != session['username']:
+        return 'channel not belongs to you'
+
     sess.query(Produces).filter_by(chanid=id).delete()
     for p in ch.import_stream(request.forms['data'].splitlines()):
         sess.add(sess.merge(p))
@@ -69,6 +100,9 @@ def _import(session, id):
 def _import(session, id):
     ch = sess.query(Channels).filter_by(id=id).scalar()
     if not ch: return 'channel not exists.'
+    if ch.username != session['username']:
+        return 'channel not belongs to you'
+
     for p in ch.import_stream(request.forms['data'].splitlines()):
         sess.add(sess.merge(p))
     sess.commit()
@@ -81,12 +115,22 @@ def getprods(id):
 @route('/exp/<id:int>')
 @usr.chklogin()
 def _export(session, id):
+    ch = sess.query(Channels).filter_by(id=id).scalar()
+    if not ch: return 'channel not exists.'
+    if ch.username != session['username']:
+        return 'channel not belongs to you'
+
     response.set_header('Content-Type', 'text/plain')
     return getprods(id)
 
 @route('/clean/<id:int>')
 @usr.chklogin()
 def _cleanup(session, id):
+    ch = sess.query(Channels).filter_by(id=id).scalar()
+    if not ch: return 'channel not exists.'
+    if ch.username != session['username']:
+        return 'channel not belongs to you'
+
     sess.query(Readed).filter_by(chanid=id).delete()
     sess.commit()
     return bottle.redirect('/')
@@ -95,6 +139,10 @@ def _cleanup(session, id):
 @usr.chklogin()
 def _run(session, id):
     ch = sess.query(Channels).filter_by(id=id).scalar()
+    if not ch: return 'channel not exists.'
+    if ch.username != session['username']:
+        return 'channel not belongs to you'
+
     cfg = app.config['cfg']
     cvelist = list(cves.getcves(cfg))
     dryrun = cfg.getboolean('main', 'dryrun')

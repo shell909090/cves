@@ -27,6 +27,21 @@ class Users(Base):
     __tablename__ = 'users'
     username = Column(String(40), primary_key=True)
     passwd = Column(String, nullable=False)
+    inviter = Column(String(40))
+    token = Column(String)
+    token_ts = Column(Integer)
+
+    def uptoken(self):
+        if time.time() - self.token_ts < 3600: return
+        self.token = [random.choice(string.letter) for i in xrange(30)]
+        self.token_ts = time.time()
+        return True
+
+    def renew_pass(self, token, password):
+        if time.time() - self.token_ts > 3600 or self.token != token: return
+        self.token = ''
+        self.token_ts = 0
+        self.password = password
 
 class Channels(Base):
     __tablename__ = 'channels'
@@ -95,7 +110,7 @@ def main():
     elif '-n' in optdict:
         ch = Channels(name=args[0], username=args[1], severity=args[2])
         sess.add(ch)
-        for p in import_stream(sys.stdin, sess, ch): sess.add(p)
+        for p in ch.import_stream(sys.stdin): sess.add(p)
         sess.commit()
 
 if __name__ == '__main__': main()

@@ -1,7 +1,7 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 <html>
   <head>
-    <title>import produce</title>
+    <title>severity</title>
     <meta charset="utf-8" />
     <meta name="author" content="shell">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,9 +13,14 @@
     % include("nav.html")
     <div class="container">
       <form method="POST">
-	<textarea rows="30" cols="50" name="data">{{data}}</textarea>
+	<select name="severity">
+	  <option value="high" {{'selected' if ch.severity == 'high' else ''}}>high</option>
+	  <option value="medium" {{'selected' if ch.severity == 'medium' else ''}}>medium</option>
+	  <option value="low" {{'selected' if ch.severity == 'low' else ''}}>low</option>
+	</select>
 	<button class="btn" type="submit">commit</button>
       </form>
+    </div>
     <script type="text/javascript" src="/static/js/jquery-1.10.2.min.js" charset="utf-8"></script>
     <script src="/static/js/bootstrap.min.js"></script>
   </body>
