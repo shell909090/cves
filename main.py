@@ -5,7 +5,7 @@
 @author: shell.xu
 @version: 0.8.1
 '''
-import os, sys, web, base64, getopt, logging
+import os, sys, base64, getopt, logging
 from os import path
 import bottle, cves
 from beaker.middleware import SessionMiddleware
