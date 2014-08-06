@@ -135,21 +135,24 @@ def vuln(prod):
     def inner(cve):
         for n in set(re_split.split(cve['produce'])):
             if n not in prod: continue
-            v = prod[n]
-            if v == 'all': return True
+            vs = prod[n]
+            if vs == 'all': return True
             cve['vers'].sort(cmp=lambda x,y: version_compare(x, y) <= 0)
             vers = cve['vers']
-            if version_compare(v, vers[-1]) <= 0 and version_compare(v, vers[0]) > 0:
-                logging.debug('%s(%s) in %s - %s' % (cve['produce'], v, vers[0], vers[-1]))
-                return True
+            for v in vs:
+                if version_compare(v, vers[-1]) <= 0 and version_compare(v, vers[0]) > 0:
+                    logging.debug('%s(%s) in %s - %s' % (cve['produce'], v, vers[0], vers[-1]))
+                    return True
     return inner
 
+import pprint
 def merge_prod(prod):
     rslt = {}
-    for k, v in prod.iteritems():
-        for n in set(re_split.split(k)):
-            if n not in rslt or version_compare(rslt[n], v) > 0:
-                rslt[n] = v
+    for k, v in prod:
+        for n in set(re_split.split(k)): rslt.setdefault(n, []).append(v)
+    for k, v in rslt.items():
+        if 'all' in v: rslt[k] = 'all'
+    pprint.pprint(rslt)
     return rslt
 
 def gen_chan_body(src, prod, id, readed=None, severity=None):
@@ -157,6 +160,7 @@ def gen_chan_body(src, prod, id, readed=None, severity=None):
     if severity: src = filter(severity_filter(severity), src)
     if readed: src = filter(readed_filter(readed), src)
     stream, readed = cStringIO.StringIO(), []
+    pprint.pprint(prod)
     for cve in filter(vuln(merge_prod(prod)), src):
         stream.write('%s [%s] %s (%s to %s)\n' % (
             cve['name'], cve['severity'], cve['produce'],

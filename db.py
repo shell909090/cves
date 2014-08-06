@@ -55,11 +55,12 @@ class Channels(Base):
     severity = Column(String)
 
     def gen_body(self, src, sess, dryrun=False):
-        prod, readed = {}, set()
+        prod, readed = [], set()
         for p in sess.query(Produces).filter_by(chan=self):
-            prod[p.prod] = p.ver
-        for r in sess.query(Readed).filter_by(chan=self):
-            readed.add(r.cve)
+            prod.append((p.prod, p.ver))
+        if not dryrun:
+            for r in sess.query(Readed).filter_by(chan=self):
+                readed.add(r.cve)
         body, newreaded = cves.gen_chan_body(
             src, prod, self.id, readed, self.severity)
         if not dryrun:
