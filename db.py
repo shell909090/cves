@@ -4,15 +4,15 @@
 @date: 2014-07-31
 @author: shell.xu
 '''
-import os, sys, cves
-import bcrypt, sqlalchemy
+import os, sys, time, random, string
+import bcrypt, sqlalchemy, cves
 from sqlalchemy import desc, or_, Table, Column, Integer, String
 from sqlalchemy import DateTime, Boolean, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.ext.declarative import declarative_base
 
 __all__ = [
-    'crypto_pass', 'check_pass',
+    'crypto_pass', 'check_pass', 'gentoken',
     'Users', 'Channels', 'Produces', 'Readed']
 
 Base = declarative_base()
@@ -23,6 +23,9 @@ def crypto_pass(p):
 def check_pass(p, h):
     return bcrypt.hashpw(p, h) == h
 
+def gentoken(l):
+    return ''.join([random.choice(string.letters) for i in xrange(l)])
+
 class Users(Base):
     __tablename__ = 'users'
     username = Column(String(40), primary_key=True)
@@ -32,8 +35,8 @@ class Users(Base):
     token_ts = Column(Integer)
 
     def uptoken(self):
-        if time.time() - self.token_ts < 3600: return
-        self.token = [random.choice(string.letter) for i in xrange(30)]
+        if self.token_ts and time.time() - self.token_ts < 3600: return
+        self.token = gentoken(30)
         self.token_ts = time.time()
         return True
 
@@ -41,7 +44,7 @@ class Users(Base):
         if time.time() - self.token_ts > 3600 or self.token != token: return
         self.token = ''
         self.token_ts = 0
-        self.password = password
+        self.passwd = crypto_pass(password)
 
 class Channels(Base):
     __tablename__ = 'channels'

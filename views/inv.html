@@ -1,7 +1,7 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 <html>
   <head>
-    <title>login</title>
+    <title>invite user</title>
     <meta charset="utf-8" />
     <meta name="author" content="shell">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -45,12 +45,11 @@
   <body>
     <div class="container">
       <form class="form-signin" method="POST">
-        <h2 class="form-signin-heading">Set password</h2>
+        <h2 class="form-signin-heading">Invite User</h2>
 	% if defined('errmsg'):
 	{{errmsg}}
 	% end
-        <input name="token" type="text" class="input-block-level" value="token">
-        <input name="password" type="password" class="input-block-level" placeholder="Password">
+        <input name="username" type="text" class="input-block-level" placeholder="email address">
         <button class="btn btn-large btn-primary" type="submit">Sign in</button>
       </form>
     </div>

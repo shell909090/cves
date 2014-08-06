@@ -1,7 +1,7 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 <html>
   <head>
-    <title>login</title>
+    <title>reset password</title>
     <meta charset="utf-8" />
     <meta name="author" content="shell">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -49,7 +49,7 @@
 	% if defined('errmsg'):
 	{{errmsg}}
 	% end
-        <input name="token" type="text" class="input-block-level" value="token">
+        <input name="token" type="text" class="input-block-level" value="{{token}}">
         <input name="password" type="password" class="input-block-level" placeholder="Password">
         <button class="btn btn-large btn-primary" type="submit">Sign in</button>
       </form>
