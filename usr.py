@@ -14,7 +14,7 @@ logger = logging.getLogger('users')
 app = bottle.default_app()
 sess = app.config['db.session']
 
-def sendmail(title, body):
+def sendmail(username, title, body):
     cfg = app.config['cfg']
     sender = cfg.get('email', 'mail')
     with cves.with_emailconfig(cfg, False) as srv:
@@ -50,7 +50,7 @@ def _login():
         url = 'http://%s/retrieve?token=%s' % (addr, user.token)
         body = 'Retrieve password for cves, here is your token: %s. Use it in an hour.\n click: %s.' % (
             user.token, url)
-        sendmail('retrieve password', body)
+        sendmail(username, 'retrieve password', body)
         return bottle.redirect('/login')
 
     logger.debug("login with %s" % username)
@@ -109,7 +109,7 @@ def _invite(session):
     url = 'http://%s/retrieve?token=%s' % (addr, user.token)
     body = 'You have been invited for using cves, here is your token: %s. Use it in an hour.\n click: %s.' % (
         user.token, url)
-    sendmail('cves invite from %s' % self.username, body)
+    sendmail(username, 'cves invite from %s' % self.username, body)
     return bottle.redirect('/')
 
 @route('/retrieve')
