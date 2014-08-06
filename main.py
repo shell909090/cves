@@ -48,8 +48,21 @@ def main():
         print main.__doc__
         return
 
-    host = optdict.get('-a') or cfg.get('main', 'addr')
-    port = int(optdict.get('-p') or cfg.get('main', 'port'))
+    from urlparse import urlparse
+    if cfg.has_option('main', 'baseurl'):
+        u = urlparse(cfg.get('main', 'baseurl'))
+    else: u = None
+
+    if '-a' in optdict:
+        host = optdict.get('-a')
+    elif u: host = u.hostname
+    else: host = 'localhost'
+
+    if '-p' in optdict:
+        port = int(optdict.get('-p'))
+    elif u: port = u.port
+    else: port = 9872
+
     bottle.run(app=application, host=host, port=port, reloader=True)
 
 if __name__ == '__main__': main()

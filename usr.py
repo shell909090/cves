@@ -44,10 +44,7 @@ def _login():
         if not r: return 'too fast'
 
         cfg = app.config['cfg']
-        addr = cfg.get('main', 'addr')
-        if cfg.has_option('main', 'port'):
-            addr += ':%d' % cfg.getint('main', 'port')
-        url = 'http://%s/retrieve?token=%s' % (addr, user.token)
+        url = '%s/retrieve?token=%s' % (cfg.get('main', 'baseurl'), user.token)
         body = 'Retrieve password for cves, here is your token: %s. Use it in an hour.\n click: %s.' % (
             user.token, url)
         sendmail(username, 'retrieve password', body)
@@ -103,10 +100,7 @@ def _invite(session):
     if not r: return 'too fast'
 
     cfg = app.config['cfg']
-    addr = cfg.get('main', 'addr')
-    if cfg.has_option('main', 'port'):
-        addr += ':%d' % cfg.getint('main', 'port')
-    url = 'http://%s/retrieve?token=%s' % (addr, user.token)
+    url = '%s/retrieve?token=%s' % (cfg.get('main', 'baseurl'), user.token)
     body = 'You have been invited for using cves, here is your token: %s. Use it in an hour.\n click: %s.' % (
         user.token, url)
     sendmail(username, 'cves invite from %s' % self.username, body)
