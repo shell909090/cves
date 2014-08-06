@@ -89,6 +89,7 @@ def _edit(session, id):
     for p in ch.import_stream(request.forms['data'].splitlines()):
         sess.add(sess.merge(p))
     sess.commit()
+    return bottle.redirect('/')
 
 @route('/imp/<id:int>')
 @usr.chklogin()
@@ -147,4 +148,5 @@ def _run(session, id):
     cvelist = list(cves.getcves(cfg))
     dryrun = cfg.getboolean('main', 'dryrun')
     # TODO: don't use readed
+    response.set_header('Content-Type', 'text/plain')
     return ch.gen_body(cvelist, sess, dryrun=dryrun)
