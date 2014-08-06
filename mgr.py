@@ -24,10 +24,12 @@ def _list(session):
 @route('/add', method='POST')
 @usr.chklogin()
 def _add(session):
+    severity = request.forms.get('severity')
+    if severity not in cves.SM: return 'invalid severity'
     sess.add(Channels(
         name=request.forms.get('name'),
         username=session['username'],
-        severity=request.forms.get('severity')))
+        severity=severity))
     sess.commit()
     return bottle.redirect('/')
 
