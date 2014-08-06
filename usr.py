@@ -17,9 +17,6 @@ sess = app.config['db.session']
 def sendmail(title, body):
     cfg = app.config['cfg']
     sender = cfg.get('email', 'mail')
-    url = 'http://%s:%s/retrieve?token=%s' % (
-        cfg.get('main', 'addr'), cfg.get('main', 'port'), user.token)
-    body = body % (user.token, url)
     with cves.with_emailconfig(cfg, False) as srv:
         msg = MIMEText(body)
         msg['Subject'] = title
@@ -45,9 +42,11 @@ def _login():
         r = user.uptoken()
         sess.commit()
         if not r: return 'too fast'
-        sendmail(
-            'retrieve password',
-            'Retrieve password for cves, here is your token: %s. Use it in an hour.\n click: %s.')
+        url = 'http://%s:%s/retrieve?token=%s' % (
+            cfg.get('main', 'addr'), cfg.get('main', 'port'), user.token)
+        body = 'Retrieve password for cves, here is your token: %s. Use it in an hour.\n click: %s.' % (
+            user.token, url)
+        sendmail('retrieve password', body)
         return bottle.redirect('/login')
 
     logger.debug("login with %s" % username)
@@ -98,9 +97,11 @@ def _invite(session):
     r = user.uptoken()
     sess.commit()
     if not r: return 'too fast'
-    sendmail(
-        'cves invite from %s' % self.username,
-        'You have been invited for using cves, here is your token: %s. Use it in an hour.\n click: %s.')
+    url = 'http://%s:%s/retrieve?token=%s' % (
+        cfg.get('main', 'addr'), cfg.get('main', 'port'), user.token)
+    body = 'You have been invited for using cves, here is your token: %s. Use it in an hour.\n click: %s.' % (
+        user.token, url)
+    sendmail('cves invite from %s' % self.username, body)
     return bottle.redirect('/')
 
 @route('/retrieve')
@@ -112,7 +113,6 @@ def _retrieve():
 def _retrieve():
     token = request.forms.get('token')
     password = request.forms.get('password')
-    print password
     if not password: return 'failed.'
 
     user = sess.query(Users).filter_by(token=token).scalar()
