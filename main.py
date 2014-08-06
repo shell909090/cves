@@ -53,4 +53,3 @@ def main():
     bottle.run(app=application, host=host, port=port, reloader=True)
 
 if __name__ == '__main__': main()
-else: application = app.wsgifunc()

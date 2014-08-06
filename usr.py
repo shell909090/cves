@@ -52,7 +52,7 @@ def _login():
 
     logger.debug("login with %s" % username)
     user = sess.query(Users).filter_by(username=username).scalar()
-    if not user or not check_pass(password, user.passwd):
+    if not user or not check_pass(password, str(user.passwd)):
         errmsg = "login failed %s." % username
         logger.info(errmsg)
         return template('login.html', errmsg=errmsg)
