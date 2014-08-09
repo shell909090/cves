@@ -5,6 +5,7 @@
 @author: shell.xu
 '''
 import os, sys, logging
+from os import path
 import bottle, cves
 from bottle import route, post, template, request, response, redirect
 from db import *
@@ -13,15 +14,16 @@ import usr
 logger = logging.getLogger('channel')
 app = bottle.default_app()
 sess = app.config['db.session']
+basepath = app.config['basepath']
 
-@route('/')
+@route(basepath + '/')
 @usr.chklogin()
 def _list(session):
     chs = sess.query(Channels).filter_by(
         username=session['username']).order_by(Channels.id)
     return template('chs.html', chs=chs)
 
-@post('/add')
+@post(path.join(basepath, 'add'))
 @usr.chklogin()
 def _add(session):
     severity = request.forms.get('severity')
@@ -33,7 +35,7 @@ def _add(session):
     sess.commit()
     return redirect('.')
 
-@route('/del/<id:int>')
+@route(path.join(basepath, 'del/<id:int>'))
 @usr.chklogin()
 def _del(session, id):
     ch = sess.query(Channels).filter_by(id=id).scalar()
@@ -45,7 +47,7 @@ def _del(session, id):
     sess.commit()
     return redirect('..')
 
-@route('/sev/<id:int>')
+@route(path.join(basepath, 'sev/<id:int>'))
 @usr.chklogin()
 def _sev(session, id):
     ch = sess.query(Channels).filter_by(id=id).scalar()
@@ -55,7 +57,7 @@ def _sev(session, id):
 
     return template('sev.html', ch=ch)
 
-@post('/sev/<id:int>')
+@post(path.join(basepath, 'sev/<id:int>'))
 @usr.chklogin()
 def _sev(session, id):
     ch = sess.query(Channels).filter_by(id=id).scalar()
@@ -69,7 +71,7 @@ def _sev(session, id):
     sess.commit()
     return redirect('..')
 
-@route('/edit/<id:int>')
+@route(path.join(basepath, 'edit/<id:int>'))
 @usr.chklogin()
 def _edit(session, id):
     ch = sess.query(Channels).filter_by(id=id).scalar()
@@ -79,7 +81,7 @@ def _edit(session, id):
 
     return template('imp.html', data=''.join(getprods(id)))
 
-@post('/edit/<id:int>')
+@post(path.join(basepath, 'edit/<id:int>'))
 @usr.chklogin()
 def _edit(session, id):
     ch = sess.query(Channels).filter_by(id=id).scalar()
@@ -93,12 +95,12 @@ def _edit(session, id):
     sess.commit()
     return redirect('..')
 
-@route('/imp/<id:int>')
+@route(path.join(basepath, 'imp/<id:int>'))
 @usr.chklogin()
 def _import(session, id):
     return template('imp.html', data='')
 
-@post('/imp/<id:int>')
+@post(path.join(basepath, 'imp/<id:int>'))
 @usr.chklogin()
 def _import(session, id):
     ch = sess.query(Channels).filter_by(id=id).scalar()
@@ -116,7 +118,7 @@ def getprods(id):
     for i in sorted(prods, key=lambda x:x.prod):
         yield '%s %s\n' % (i.prod, i.ver)
 
-@route('/exp/<id:int>')
+@route(path.join(basepath, 'exp/<id:int>'))
 @usr.chklogin()
 def _export(session, id):
     ch = sess.query(Channels).filter_by(id=id).scalar()
@@ -127,7 +129,7 @@ def _export(session, id):
     response.set_header('Content-Type', 'text/plain')
     return getprods(id)
 
-@route('/clean/<id:int>')
+@route(path.join(basepath, 'clean/<id:int>'))
 @usr.chklogin()
 def _cleanup(session, id):
     ch = sess.query(Channels).filter_by(id=id).scalar()
@@ -139,7 +141,7 @@ def _cleanup(session, id):
     sess.commit()
     return redirect('..')
 
-@route('/run/<id:int>')
+@route(path.join(basepath, 'run/<id:int>'))
 @usr.chklogin()
 def _run(session, id):
     ch = sess.query(Channels).filter_by(id=id).scalar()

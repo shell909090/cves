@@ -5,6 +5,7 @@
 @author: shell.xu
 '''
 import os, sys, logging
+from os import path
 from email.mime.text import MIMEText
 import bottle, cves
 from bottle import route, post, template, request, response, redirect
@@ -13,6 +14,7 @@ from db import *
 logger = logging.getLogger('users')
 app = bottle.default_app()
 sess = app.config['db.session']
+basepath = app.config['basepath']
 
 def sendmail(username, title, body):
     cfg = app.config['cfg']
@@ -24,11 +26,11 @@ def sendmail(username, title, body):
         msg['To'] = username
         srv.sendmail(sender, msg['To'].split(','), msg.as_string())
 
-@route('/login')
+@route(path.join(basepath, 'login'))
 def _login():
     return template('login.html')
 
-@post('/login')
+@post(path.join(basepath, 'login'))
 def _login():
     session = request.environ.get('beaker.session')
     username = request.forms.get('username')
@@ -44,7 +46,7 @@ def _login():
         if not r: return 'too fast'
 
         cfg = app.config['cfg']
-        url = '%s/retrieve?token=%s' % (cfg.get('main', 'baseurl'), user.token)
+        url = '%s/retrieve?token=%s' % (cfg.get('main', 'basepath'), user.token)
         body = 'Retrieve password for cves, here is your token: %s. Use it in an hour.\n click: %s.' % (
             user.token, url)
         sendmail(username, 'retrieve password', body)
@@ -71,19 +73,19 @@ def chklogin(perm=None, next=None):
         return _inner
     return receiver
 
-@route('/logout')
+@route(path.join(basepath, 'logout'))
 @chklogin(next='login')
 def _logout(session):
     if 'username' in session:
         del session['username']
     return redirect(request.query.next or '.')
 
-@route('/invite')
+@route(path.join(basepath, 'invite'))
 @chklogin()
 def _invite(session):
     return template('inv.html')
 
-@post('/invite')
+@post(path.join(basepath, 'invite'))
 @chklogin()
 def _invite(session):
     username = request.forms.get('username')
@@ -101,18 +103,18 @@ def _invite(session):
     if not r: return 'too fast'
 
     cfg = app.config['cfg']
-    url = '%s/retrieve?token=%s' % (cfg.get('main', 'baseurl'), user.token)
+    url = '%s/retrieve?token=%s' % (cfg.get('main', 'basepath'), user.token)
     body = 'You have been invited for using cves, here is your token: %s. Use it in an hour.\n click: %s.' % (
         user.token, url)
     sendmail(username, 'cves invite from %s' % self.username, body)
     return redirect('.')
 
-@route('/retrieve')
+@route(path.join(basepath, 'retrieve'))
 def _retrieve():
     token = request.query.get('token')
     return template('retrieve.html', token=token)
 
-@post('/retrieve')
+@post(path.join(basepath, 'retrieve'))
 def _retrieve():
     token = request.forms.get('token')
     password = request.forms.get('password')

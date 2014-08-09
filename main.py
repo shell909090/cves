@@ -37,10 +37,10 @@ application = SessionMiddleware(app, session_opts)
 
 from urlparse import urlparse
 app.config['baseurl'] = urlparse(cfg.get('main', 'baseurl'))
-app.config['basepath'] = app.config['baseurl'].path
+basepath = app.config['baseurl'].path
+app.config['basepath'] = basepath
 
-
-@bottle.route('/static/<filename:path>')
+@bottle.route(path.join(basepath, 'static/<filename:path>'))
 def _static(filename):
     return bottle.static_file(filename, root='static/')
 
