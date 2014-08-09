@@ -58,7 +58,7 @@ def _login():
         return template('login.html', errmsg=errmsg)
     logger.info("login successed %s." % username)
     session['username'] = username
-    return redirect(request.query.next or '.')
+    return redirect(request.query.next or app.config.get('basepath'))
 
 def chklogin(perm=None, next=None):
     def receiver(func):
