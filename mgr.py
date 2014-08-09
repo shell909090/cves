@@ -6,7 +6,7 @@
 '''
 import os, sys, logging
 import bottle, cves
-from bottle import route, template, request, response, redirect
+from bottle import route, post, template, request, response, redirect
 from db import *
 import usr
 
@@ -21,7 +21,7 @@ def _list(session):
         username=session['username']).order_by(Channels.id)
     return template('chs.html', chs=chs)
 
-@route('/add', method='POST')
+@post('/add')
 @usr.chklogin()
 def _add(session):
     severity = request.forms.get('severity')
@@ -31,7 +31,7 @@ def _add(session):
         username=session['username'],
         severity=severity))
     sess.commit()
-    return bottle.redirect('..')
+    return redirect('.')
 
 @route('/del/<id:int>')
 @usr.chklogin()
@@ -43,7 +43,7 @@ def _del(session, id):
 
     sess.delete(ch)
     sess.commit()
-    return bottle.redirect('/')
+    return redirect('..')
 
 @route('/sev/<id:int>')
 @usr.chklogin()
@@ -55,7 +55,7 @@ def _sev(session, id):
 
     return template('sev.html', ch=ch)
 
-@route('/sev/<id:int>', method='POST')
+@post('/sev/<id:int>')
 @usr.chklogin()
 def _sev(session, id):
     ch = sess.query(Channels).filter_by(id=id).scalar()
@@ -67,7 +67,7 @@ def _sev(session, id):
     if severity not in cves.SM: return 'invalid severity'
     ch.severity = severity
     sess.commit()
-    return bottle.redirect('..')
+    return redirect('..')
 
 @route('/edit/<id:int>')
 @usr.chklogin()
@@ -79,7 +79,7 @@ def _edit(session, id):
 
     return template('imp.html', data=''.join(getprods(id)))
 
-@route('/edit/<id:int>', method='POST')
+@post('/edit/<id:int>')
 @usr.chklogin()
 def _edit(session, id):
     ch = sess.query(Channels).filter_by(id=id).scalar()
@@ -91,14 +91,14 @@ def _edit(session, id):
     for p in ch.import_stream(request.forms['data'].splitlines()):
         sess.add(sess.merge(p))
     sess.commit()
-    return bottle.redirect('..')
+    return redirect('..')
 
 @route('/imp/<id:int>')
 @usr.chklogin()
 def _import(session, id):
     return template('imp.html', data='')
 
-@route('/imp/<id:int>', method='POST')
+@post('/imp/<id:int>')
 @usr.chklogin()
 def _import(session, id):
     ch = sess.query(Channels).filter_by(id=id).scalar()
@@ -109,6 +109,7 @@ def _import(session, id):
     for p in ch.import_stream(request.forms['data'].splitlines()):
         sess.add(sess.merge(p))
     sess.commit()
+    return redirect('..')
 
 def getprods(id):
     prods = list(sess.query(Produces).filter_by(chanid=id))
@@ -136,7 +137,7 @@ def _cleanup(session, id):
 
     sess.query(Readed).filter_by(chanid=id).delete()
     sess.commit()
-    return bottle.redirect('..')
+    return redirect('..')
 
 @route('/run/<id:int>')
 @usr.chklogin()

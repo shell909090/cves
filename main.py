@@ -35,6 +35,11 @@ session_opts = {
 }
 application = SessionMiddleware(app, session_opts)
 
+from urlparse import urlparse
+app.config['baseurl'] = urlparse(cfg.get('main', 'baseurl'))
+app.config['basepath'] = app.config['baseurl'].path
+
+
 @bottle.route('/static/<filename:path>')
 def _static(filename):
     return bottle.static_file(filename, root='static/')
@@ -48,19 +53,13 @@ def main():
         print main.__doc__
         return
 
-    from urlparse import urlparse
-    if cfg.has_option('main', 'baseurl'):
-        u = urlparse(cfg.get('main', 'baseurl'))
-    else: u = None
-
     if '-a' in optdict:
         host = optdict.get('-a')
     else: host = ''
 
     if '-p' in optdict:
         port = int(optdict.get('-p'))
-    elif u: port = u.port
-    else: port = 9872
+    else: port = app.config['baseurl'].port
 
     bottle.run(app=application, host=host, port=port, reloader=True)
 

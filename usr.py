@@ -7,7 +7,7 @@
 import os, sys, logging
 from email.mime.text import MIMEText
 import bottle, cves
-from bottle import route, template, request, response, redirect
+from bottle import route, post, template, request, response, redirect
 from db import *
 
 logger = logging.getLogger('users')
@@ -28,7 +28,7 @@ def sendmail(username, title, body):
 def _login():
     return template('login.html')
 
-@route('/login', method='POST')
+@post('/login')
 def _login():
     session = request.environ.get('beaker.session')
     username = request.forms.get('username')
@@ -48,7 +48,7 @@ def _login():
         body = 'Retrieve password for cves, here is your token: %s. Use it in an hour.\n click: %s.' % (
             user.token, url)
         sendmail(username, 'retrieve password', body)
-        return bottle.redirect('.')
+        return redirect('.')
 
     logger.debug("login with %s" % username)
     user = sess.query(Users).filter_by(username=username).scalar()
@@ -58,14 +58,15 @@ def _login():
         return template('login.html', errmsg=errmsg)
     logger.info("login successed %s." % username)
     session['username'] = username
-    return bottle.redirect(request.query.next or '.')
+    return redirect(request.query.next or '.')
 
 def chklogin(perm=None, next=None):
     def receiver(func):
         def _inner(*p, **kw):
             session = request.environ.get('beaker.session')
             if 'username' not in session:
-                return redirect('login?next=%s' % (next or request.path))
+                return redirect('%s/login?next=%s' % (
+                        app.config.get('basepath'), next or request.path))
             return func(session, *p, **kw)
         return _inner
     return receiver
@@ -75,14 +76,14 @@ def chklogin(perm=None, next=None):
 def _logout(session):
     if 'username' in session:
         del session['username']
-    return bottle.redirect(request.query.next or '.')
+    return redirect(request.query.next or '.')
 
 @route('/invite')
 @chklogin()
 def _invite(session):
     return template('inv.html')
 
-@route('/invite', method='POST')
+@post('/invite')
 @chklogin()
 def _invite(session):
     username = request.forms.get('username')
@@ -104,14 +105,14 @@ def _invite(session):
     body = 'You have been invited for using cves, here is your token: %s. Use it in an hour.\n click: %s.' % (
         user.token, url)
     sendmail(username, 'cves invite from %s' % self.username, body)
-    return bottle.redirect('.')
+    return redirect('.')
 
 @route('/retrieve')
 def _retrieve():
     token = request.query.get('token')
     return template('retrieve.html', token=token)
 
-@route('/retrieve', method='POST')
+@post('/retrieve')
 def _retrieve():
     token = request.forms.get('token')
     password = request.forms.get('password')
@@ -122,4 +123,4 @@ def _retrieve():
     logging.info('retrieve password for %s.' % user.username)
     user.renew_pass(token, password)
     sess.commit()
-    return bottle.redirect('login')
+    return redirect('login')
