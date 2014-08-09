@@ -48,7 +48,7 @@ def _login():
         body = 'Retrieve password for cves, here is your token: %s. Use it in an hour.\n click: %s.' % (
             user.token, url)
         sendmail(username, 'retrieve password', body)
-        return bottle.redirect('/login')
+        return bottle.redirect('.')
 
     logger.debug("login with %s" % username)
     user = sess.query(Users).filter_by(username=username).scalar()
@@ -58,7 +58,7 @@ def _login():
         return template('login.html', errmsg=errmsg)
     logger.info("login successed %s." % username)
     session['username'] = username
-    return bottle.redirect(request.query.next or '/')
+    return bottle.redirect(request.query.next or '.')
 
 def chklogin(perm=None, next=None):
     def receiver(func):
@@ -71,11 +71,11 @@ def chklogin(perm=None, next=None):
     return receiver
 
 @route('/logout')
-@chklogin(next='/')
+@chklogin(next='login')
 def _logout(session):
     if 'username' in session:
         del session['username']
-    return bottle.redirect(request.query.next or '/')
+    return bottle.redirect(request.query.next or '.')
 
 @route('/invite')
 @chklogin()
@@ -104,7 +104,7 @@ def _invite(session):
     body = 'You have been invited for using cves, here is your token: %s. Use it in an hour.\n click: %s.' % (
         user.token, url)
     sendmail(username, 'cves invite from %s' % self.username, body)
-    return bottle.redirect('/')
+    return bottle.redirect('.')
 
 @route('/retrieve')
 def _retrieve():
@@ -122,4 +122,4 @@ def _retrieve():
     logging.info('retrieve password for %s.' % user.username)
     user.renew_pass(token, password)
     sess.commit()
-    return bottle.redirect('/login')
+    return bottle.redirect('login')

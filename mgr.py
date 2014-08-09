@@ -31,7 +31,7 @@ def _add(session):
         username=session['username'],
         severity=severity))
     sess.commit()
-    return bottle.redirect('/')
+    return bottle.redirect('..')
 
 @route('/del/<id:int>')
 @usr.chklogin()
@@ -67,7 +67,7 @@ def _sev(session, id):
     if severity not in cves.SM: return 'invalid severity'
     ch.severity = severity
     sess.commit()
-    return bottle.redirect('/')
+    return bottle.redirect('..')
 
 @route('/edit/<id:int>')
 @usr.chklogin()
@@ -91,7 +91,7 @@ def _edit(session, id):
     for p in ch.import_stream(request.forms['data'].splitlines()):
         sess.add(sess.merge(p))
     sess.commit()
-    return bottle.redirect('/')
+    return bottle.redirect('..')
 
 @route('/imp/<id:int>')
 @usr.chklogin()
@@ -136,7 +136,7 @@ def _cleanup(session, id):
 
     sess.query(Readed).filter_by(chanid=id).delete()
     sess.commit()
-    return bottle.redirect('/')
+    return bottle.redirect('..')
 
 @route('/run/<id:int>')
 @usr.chklogin()
