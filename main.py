@@ -55,8 +55,7 @@ def main():
 
     if '-a' in optdict:
         host = optdict.get('-a')
-    elif u: host = u.hostname
-    else: host = 'localhost'
+    else: host = ''
 
     if '-p' in optdict:
         port = int(optdict.get('-p'))

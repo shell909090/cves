@@ -65,7 +65,7 @@ def chklogin(perm=None, next=None):
         def _inner(*p, **kw):
             session = request.environ.get('beaker.session')
             if 'username' not in session:
-                return redirect('/login?next=%s' % (next or request.path))
+                return redirect('login?next=%s' % (next or request.path))
             return func(session, *p, **kw)
         return _inner
     return receiver
