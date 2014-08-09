@@ -145,14 +145,12 @@ def vuln(prod):
                     return True
     return inner
 
-import pprint
 def merge_prod(prod):
     rslt = {}
     for k, v in prod:
         for n in set(re_split.split(k)): rslt.setdefault(n, []).append(v)
     for k, v in rslt.items():
         if 'all' in v: rslt[k] = 'all'
-    pprint.pprint(rslt)
     return rslt
 
 def gen_chan_body(src, prod, id, readed=None, severity=None):
@@ -160,7 +158,6 @@ def gen_chan_body(src, prod, id, readed=None, severity=None):
     if severity: src = filter(severity_filter(severity), src)
     if readed: src = filter(readed_filter(readed), src)
     stream, readed = cStringIO.StringIO(), []
-    pprint.pprint(prod)
     for cve in filter(vuln(merge_prod(prod)), src):
         stream.write('%s [%s] %s (%s to %s)\n' % (
             cve['name'], cve['severity'], cve['produce'],

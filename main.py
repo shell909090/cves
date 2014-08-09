@@ -21,7 +21,8 @@ cfg = cves.getcfg(['cves.ini', '/etc/cves.ini'])
 app.config['cfg'] = cfg
 cves.initlog(cfg.get('log', 'level'), cfg.get('log', 'file'))
 
-engine = sqlalchemy.create_engine(cfg.get('db', 'url'))
+echo = cfg.has_option('db', 'echo') and cfg.getboolean('db', 'echo')
+engine = sqlalchemy.create_engine(cfg.get('db', 'url'), echo=echo)
 sess = sqlalchemy.orm.sessionmaker(bind=engine)()
 app.config['db.engine'] = engine
 app.config['db.session'] = sess
