@@ -23,9 +23,14 @@ def _list(session):
         username=session['username']).order_by(Channels.id)
     return template('chs.html', chs=chs)
 
-@post(path.join(basepath, 'add'))
+@route(path.join(basepath, 'addchan'))
 @usr.chklogin()
-def _add(session):
+def _addchan(session):
+    return template('addchan.html')
+
+@post(path.join(basepath, 'addchan'))
+@usr.chklogin()
+def _addchan(session):
     severity = request.forms.get('severity')
     if severity not in cves.SM: return 'invalid severity'
     sess.add(Channels(

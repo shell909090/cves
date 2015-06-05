@@ -5,7 +5,7 @@
 @author: shell.xu
 '''
 import os, sys, time, random, string
-import bcrypt, sqlalchemy, cves
+import bcrypt, sqlalchemy, utils, cves
 from sqlalchemy import desc, or_, Table, Column, Integer, String
 from sqlalchemy import DateTime, Boolean, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship, backref
@@ -30,7 +30,7 @@ class Users(Base):
     __tablename__ = 'users'
     username = Column(String(40), primary_key=True)
     passwd = Column(String, nullable=False)
-    inviter = Column(String(40))
+    cclist = Column(String)
     token = Column(String)
     token_ts = Column(Integer)
 
@@ -45,6 +45,8 @@ class Users(Base):
         self.token = ''
         self.token_ts = 0
         self.passwd = crypto_pass(password)
+
+SM = {'high': 3, 'medium': 2, 'low': 1}
 
 class Channels(Base):
     __tablename__ = 'channels'
@@ -92,29 +94,40 @@ class Readed(Base):
     cve = Column(String)
     ts = Column(DateTime, server_default=sqlalchemy.text('CURRENT_TIMESTAMP'))
 
-def main():
-    import getopt, subprocess, ConfigParser
-    optlist, args = getopt.getopt(sys.argv[1:], 'bhnu')
-    optdict = dict(optlist)
-    if '-h' in optdict:
-        print main.__doc__
-        return
+class HttpCache(Base):
+    __tablename__ = 'urletags'
+    id = Column(Integer, primary_key=True)
+    url = Column(String, unique=True)
+    etag = Column(String)
+    last_change = Column(DateTime, server_default=sqlalchemy.text('CURRENT_TIMESTAMP'))
+    cache_file = Column(String)
 
-    cfg = cves.getcfg(['cves.ini', '/etc/cves.ini'])
-    cves.initlog(cfg.get('log', 'level'), cfg.get('log', 'file'))
-    engine = sqlalchemy.create_engine(cfg.get('db', 'url'))
-    sess = sqlalchemy.orm.sessionmaker(bind=engine)()
+def download(sess, url, retry=3, timeout=10):
+    headers = {}
 
-    if '-b' in optdict:
-        Base.metadata.create_all(engine)
-    elif '-u' in optdict:
-        u = Users(username=args[0], passwd=crypto_pass(args[1]))
-        sess.add(u)
+    ue = sess.query(HttpCache).filter_by(url=url).scalar()
+    if ue and path.exists(ue.cache_file):
+        logging.debug('etag found: %s' % ue.etag)
+        headers['If-None-Match'] = ue.etag
+        # TODO: if modified since
+
+    r = utils.download(url, headers, retry, timeout)
+
+    if r.status_code == 304:
+        logging.debug('not modify, use cache.')
+        with open(ue.cache_file) as fi:
+            return fi.read()
+    
+    if 'Etag' in r.headers:
+        if not ue:
+            ue = HttpCache()
+            sess.add(ue)
+        ue.url = url
+        ue.etag = r.headers['Etag']
+        # ue.last_change = 
+        # ue.cache_file = ??
+        with open(ue.cache_file, 'wb') as fo:
+            fo.write(r.content)
         sess.commit()
-    elif '-n' in optdict:
-        ch = Channels(name=args[0], username=args[1], severity=args[2])
-        sess.add(ch)
-        for p in ch.import_stream(sys.stdin): sess.add(p)
-        sess.commit()
 
-if __name__ == '__main__': main()
+    return r.content

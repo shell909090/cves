@@ -7,11 +7,10 @@
 import os, sys, logging
 from os import path
 from email.mime.text import MIMEText
-import bottle, cves
+import bottle, utils, cves
 from bottle import route, post, template, request, response, redirect
 from db import *
 
-logger = logging.getLogger('users')
 app = bottle.default_app()
 sess = app.config['db.session']
 basepath = app.config['basepath']
@@ -19,7 +18,7 @@ basepath = app.config['basepath']
 def sendmail(username, title, body):
     cfg = app.config['cfg']
     sender = cfg.get('email', 'mail')
-    with cves.with_emailconfig(cfg, False) as srv:
+    with utils.with_emailconfig(cfg) as srv:
         msg = MIMEText(body)
         msg['Subject'] = title
         msg['From'] = sender
@@ -32,33 +31,21 @@ def _login():
 
 @post(path.join(basepath, 'login'))
 def _login():
-    session = request.environ.get('beaker.session')
     username = request.forms.get('username')
     password = request.forms.get('password')
-    retrieve = request.forms.get('retrieve')
 
-    if retrieve:
-        user = sess.query(Users).filter_by(username=username).scalar()
-        if not user: return 'failed.'
+    if request.forms.get('register'): return register(username)
+    if request.forms.get('retrieve'): return retrieve(username)
 
-        r = user.uptoken()
-        sess.commit()
-        if not r: return 'too fast'
-
-        cfg = app.config['cfg']
-        url = '%s/retrieve?token=%s' % (cfg.get('main', 'basepath'), user.token)
-        body = 'Retrieve password for cves, here is your token: %s. Use it in an hour.\n click: %s.' % (
-            user.token, url)
-        sendmail(username, 'retrieve password', body)
-        return redirect('.')
-
-    logger.debug("login with %s" % username)
+    logging.debug("login with %s" % username)
     user = sess.query(Users).filter_by(username=username).scalar()
     if not user or not check_pass(password, str(user.passwd)):
         errmsg = "login failed %s." % username
-        logger.info(errmsg)
+        logging.info(errmsg)
         return template('login.html', errmsg=errmsg)
-    logger.info("login successed %s." % username)
+    logging.info("login successed %s." % username)
+
+    session = request.environ.get('beaker.session')
     session['username'] = username
     return redirect(request.query.next or app.config.get('basepath'))
 
@@ -80,33 +67,42 @@ def _logout(session):
         del session['username']
     return redirect(request.query.next or '.')
 
-@route(path.join(basepath, 'invite'))
-@chklogin()
-def _invite(session):
-    return template('inv.html')
+def register(username):
+    cfg = app.config['cfg']
+    if cfg.has_option('main', 'auth') and cfg.get('main', 'auth') != 'db':
+        return 'can\'t register under non-db auth mode'
 
-@post(path.join(basepath, 'invite'))
-@chklogin()
-def _invite(session):
-    username = request.forms.get('username')
     user = sess.query(Users).filter_by(username=username).scalar()
     if user: return 'failed.'
 
-    self = sess.query(Users).filter_by(username=session['username']).scalar()
-    if not self: return 'failed.'
-
-    user = Users(username=username, passwd=crypto_pass(gentoken(30)), inviter=session['username'])
+    user = Users(username=username, passwd=crypto_pass(gentoken(30)))
     sess.add(user)
-
-    r = user.uptoken()
+    if not user.uptoken(): return 'too fast'
     sess.commit()
-    if not r: return 'too fast'
 
     cfg = app.config['cfg']
-    url = '%s/retrieve?token=%s' % (cfg.get('main', 'basepath'), user.token)
+    url = '%s/retrieve?token=%s' % (cfg.get('main', 'baseurl'), user.token)
     body = 'You have been invited for using cves, here is your token: %s. Use it in an hour.\n click: %s.' % (
         user.token, url)
-    sendmail(username, 'cves invite from %s' % self.username, body)
+    sendmail(username, 'cves register mail', body)
+    return redirect('.')
+
+def retrieve(username):
+    cfg = app.config['cfg']
+    if cfg.has_option('main', 'auth') and cfg.get('main', 'auth') != 'db':
+        return 'can\'t retrieve under non-db auth mode'
+
+    user = sess.query(Users).filter_by(username=username).scalar()
+    if not user: return 'failed.'
+
+    if not user.uptoken(): return 'too fast'
+    sess.commit()
+
+    cfg = app.config['cfg']
+    url = '%s/retrieve?token=%s' % (cfg.get('main', 'baseurl'), user.token)
+    body = 'Retrieve password for cves, here is your token: %s. Use it in an hour.\n click: %s.' % (
+        user.token, url)
+    sendmail(username, 'retrieve password', body)
     return redirect('.')
 
 @route(path.join(basepath, 'retrieve'))
@@ -126,3 +122,20 @@ def _retrieve():
     user.renew_pass(token, password)
     sess.commit()
     return redirect('login')
+
+@route(path.join(basepath, 'setcc'))
+@chklogin()
+def _setcc(session):
+    user = sess.query(Users).filter_by(username=session['username']).scalar()
+    if not user: return 'user in session not exist'
+    return template('setcc.html', data=user.cclist)
+
+@post(path.join(basepath, 'setcc'))
+@chklogin()
+def _setcc(session):
+    user = sess.query(Users).filter_by(username=session['username']).scalar()
+    if not user: return 'user in session not exist'
+
+    user.cclist = request.forms.get('data')
+    sess.commit()
+    return redirect('.')
