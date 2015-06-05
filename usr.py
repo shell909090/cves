@@ -77,6 +77,7 @@ def register(username):
 
     user = Users(username=username, passwd=crypto_pass(gentoken(30)))
     sess.add(user)
+    # FIXME: 是否会招致token发不出去而卡住？
     if not user.uptoken(): return 'too fast'
     sess.commit()
 
@@ -105,6 +106,7 @@ def retrieve(username):
     sendmail(username, 'retrieve password', body)
     return redirect('.')
 
+# FIXME: retrieve的时候是否最好跟用户名
 @route(path.join(basepath, 'retrieve'))
 def _retrieve():
     token = request.query.get('token')

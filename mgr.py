@@ -86,6 +86,13 @@ def _edit(session, id):
 
     return template('imp.html', data=''.join(getprods(id)))
 
+def import_stream(chan, stream):
+    for line in stream:
+        line = line.strip()
+        if not line: continue
+        prod, ver = line.split(' ', 1)
+        yield Produces(chan=chan, prod=prod, ver=ver)
+
 @post(path.join(basepath, 'edit/<id:int>'))
 @usr.chklogin()
 def _edit(session, id):
@@ -95,7 +102,7 @@ def _edit(session, id):
         return 'channel not belongs to you'
 
     sess.query(Produces).filter_by(chanid=id).delete()
-    for p in ch.import_stream(request.forms['data'].splitlines()):
+    for p in import_stream(ch, request.forms['data'].splitlines()):
         sess.add(sess.merge(p))
     sess.commit()
     return redirect('..')
@@ -113,7 +120,7 @@ def _import(session, id):
     if ch.username != session['username']:
         return 'channel not belongs to you'
 
-    for p in ch.import_stream(request.forms['data'].splitlines()):
+    for p in import_stream(ch, request.forms['data'].splitlines()):
         sess.add(sess.merge(p))
     sess.commit()
     return redirect('..')

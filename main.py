@@ -19,23 +19,9 @@ def built_db(cfg, engine, sess):
         sess.commit()
 
 def cron_job(cfg, engine, sess):
-    sender = cfg.get('email', 'mail')
-    cvelist = list(cves.getcves(cfg))
-    logging.debug('cvelist length %d' % len(cvelist))
-
     dryrun = cfg.getboolean('main', 'dryrun')
     with cves.with_emailconfig(cfg, dryrun) as srv:
-        for ch in sess.query(Channels):
-            body = ch.gen_body(cvelist, sess, dryrun=dryrun)
-            if not body: continue
-            if not dryrun:
-                msg = MIMEText(body)
-                msg['Subject'] = 'CVE for %s' % ch.name
-                msg['From'] = sender
-                msg['To'] = ch.user.username
-                logging.info('send email to %s' % msg['to'])
-                srv.sendmail(sender, msg['To'].split(','), msg.as_string())
-            else: print body
+        vuln.run(sess, srv, cfg, dryrun)
 
     # remove readed record for more then half a year
     sess.query(Readed).filter(Readed.ts < '"CURRENT_TIMESTAMP - 180 * 86400"').delete()

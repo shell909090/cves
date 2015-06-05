@@ -56,28 +56,6 @@ class Channels(Base):
     user = relationship("Users")
     severity = Column(String)
 
-    def gen_body(self, src, sess, dryrun=False):
-        prod, readed = [], set()
-        for p in sess.query(Produces).filter_by(chan=self):
-            prod.append((p.prod, p.ver))
-        if not dryrun:
-            for r in sess.query(Readed).filter_by(chan=self):
-                readed.add(r.cve)
-        body, newreaded = cves.gen_chan_body(
-            src, prod, self.id, readed, self.severity)
-        if not dryrun:
-            for name in newreaded:
-                sess.add(Readed(chan=self, cve=name))
-            sess.commit()
-        return body
-
-    def import_stream(self, stream):
-        for line in stream:
-            line = line.strip()
-            if not line: continue
-            prod, ver = line.split(' ', 1)
-            yield Produces(chan=self, prod=prod, ver=ver)
-
 class Produces(Base):
     __tablename__ = 'produces'
     id = Column(Integer, primary_key=True)
