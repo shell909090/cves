@@ -78,34 +78,3 @@ class HttpCache(Base):
     url = Column(String, unique=True)
     etag = Column(String)
     last_change = Column(DateTime, server_default=sqlalchemy.text('CURRENT_TIMESTAMP'))
-    cache_file = Column(String)
-
-def download(sess, url, retry=3, timeout=10):
-    headers = {}
-
-    ue = sess.query(HttpCache).filter_by(url=url).scalar()
-    if ue and path.exists(ue.cache_file):
-        logging.debug('etag found: %s' % ue.etag)
-        headers['If-None-Match'] = ue.etag
-        # TODO: if modified since
-
-    r = utils.download(url, headers, retry, timeout)
-
-    if r.status_code == 304:
-        logging.debug('not modify, use cache.')
-        with open(ue.cache_file) as fi:
-            return fi.read()
-    
-    if 'Etag' in r.headers:
-        if not ue:
-            ue = HttpCache()
-            sess.add(ue)
-        ue.url = url
-        ue.etag = r.headers['Etag']
-        # ue.last_change = 
-        # ue.cache_file = ??
-        with open(ue.cache_file, 'wb') as fo:
-            fo.write(r.content)
-        sess.commit()
-
-    return r.content

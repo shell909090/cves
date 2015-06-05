@@ -9,6 +9,9 @@ from ConfigParser import SafeConfigParser
 from contextlib import contextmanager
 import requests
 
+sess = None
+cfg  = None
+
 LOGFMT = '%(asctime)s.%(msecs)03d[%(levelname)s](%(module)s:%(lineno)d): %(message)s'
 def initlog(lv, logfile=None, stream=None, longdate=False):
     if isinstance(lv, basestring): lv = getattr(logging, lv)
@@ -50,23 +53,29 @@ def with_emailconfig(cfg):
 
 def download(url, headers=None, retry=3, timeout=10):
     if headers is None: headers = {}
-    sess = requests.Session()
-    sess.mount('http://', requests.adapters.HTTPAdapter(max_retries=3))
+    reqsess = requests.Session()
+    reqsess.mount('http://', requests.adapters.HTTPAdapter(max_retries=retry))
     logging.info('download %s.' % url)
-    return sess.get(url, headers=headers, timeout=timeout)
+    return reqsess.get(url, headers=headers, timeout=timeout)
 
-# def download(url, etagpath, retry=3, timeout=10):
-#     if path.exists(etagpath):
-#         if time.time() - os.stat(etagpath).st_mtime < 3600:
-#             logging.debug('etag less then a hour')
-#             return
-#         with open(etagpath, 'rb') as fi: etag = fi.read()
-#         logging.debug('etag found: %s' % etag)
-#         headers['If-None-Match'] = etag
-#     r = download_retry(url, headers, retry, timeout)
-#     with open(etagpath, 'wb') as fo: fo.write(r.headers['Etag'])
-#     if r.status_code == 304:
-#         logging.debug('not modify, use cache.')
-#         return
-#     logging.debug('new data, update etag.')
-#     return r.content
+def download_cached(url, retry=3, timeout=10):
+    headers = {}
+
+    ue = sess.query(HttpCache).filter_by(url=url).scalar()
+    if ue:
+        logging.debug('etag found: %s' % ue.etag)
+        headers['If-None-Match'] = ue.etag
+        # TODO: if modified since
+
+    r = download(url, headers, retry, timeout)
+
+    if r.status_code == 304:
+        logging.debug('not modify, use cache.')
+        return
+    
+    if 'Etag' in r.headers:
+        # TODO: if modified since
+        sess.add(sess.merge(HttpCache(url=url, etag=r.headers['Etag'])))
+        sess.commit()
+
+    return r.content

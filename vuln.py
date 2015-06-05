@@ -44,7 +44,7 @@ class ChanVulns(object):
             self.prod.append((p.prod, p.ver))
         self.prod = merge_prod(self.prod)
         if not dryrun:
-            for r in sess.query(Readed).filter_by(chan=chan):
+            for r in utils.sess.query(Readed).filter_by(chan=chan):
                 self.readed.add(r.cve)
 
     def f_severity(self, v):
@@ -67,7 +67,7 @@ class ChanVulns(object):
                     logging.debug('%s(%s) in %s - %s' % (vuln['produce'], v, vers[0], vers[-1]))
                     return True
 
-    def update(self, sess, sources):
+    def update(self, sources):
         logging.info('chan %s in new source' % self.chan.id)
         src = filter(self.f_severity, src)
         src = filter(self.f_readed, src)
@@ -100,19 +100,19 @@ class ChanVulns(object):
         logging.info('send email to %s' % msg['To'])
         mailsrv.sendmail(sender, msg['To'].split(','), msg.as_string())
 
-    def readed(self, sess):
+    def readed(self,):
         if self.dryrun: return
         for vuln in self.vulns:
-            sess.add(Readed(chan=self.chan, cve=vuln['name']))
-        sess.commit()
+            utils.sess.add(Readed(chan=self.chan, cve=vuln['name']))
+        utils.sess.commit()
 
-def run(sess, mailsrv, cfg, dryrun=False):
-    sender = cfg.get('email', 'mail')
-    cvs = [ChanVulns(chan, dryrun) for chan in sess.query(Channels)]
+def run(mailsrv, dryrun=False):
+    sender = utils.cfg.get('email', 'mail')
+    cvs = [ChanVulns(chan, dryrun) for chan in utils.sess.query(Channels)]
     for src in [cves.getlist,]:
-        vulns = src(cfg)
-        for cv in cvs: cv.update(sess, vulns)
+        vulns = src()
+        for cv in cvs: cv.update(vulns)
     for cv in cvs:
         # send in mail
         cv.sendmail(mailsrv, sender, dryrun)
-        self.readed(sess)
+        self.readed()
