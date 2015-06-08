@@ -47,7 +47,7 @@ def web_main():
     application = SessionMiddleware(app, session_opts)
 
     from urlparse import urlparse
-    u = urlparse(utils.cfg.get('main', 'baseurl'))
+    u = urlparse(utils.cfg.get('web', 'baseurl'))
     app.config['baseurl'] = u
     app.config['basepath'] = u.path
 

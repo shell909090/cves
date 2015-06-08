@@ -17,7 +17,7 @@ basepath = app.config['basepath']
 def sendmail(username, title, body):
     cfg = app.config['cfg']
     sender = cfg.get('email', 'mail')
-    dryrun = cfg.get('mail', 'dryrun')
+    dryrun = cfg.get('main', 'dryrun')
     with utils.with_emailconfig(cfg, dryrun) as srv:
         msg = MIMEText(body)
         msg['Subject'] = title
@@ -82,7 +82,7 @@ def register(username):
     sess.commit()
 
     cfg = app.config['cfg']
-    url = '%s/retrieve?token=%s' % (cfg.get('main', 'baseurl'), user.token)
+    url = '%s/retrieve?token=%s' % (cfg.get('web', 'baseurl'), user.token)
     body = 'You have been invited for using cves, here is your token: %s. Use it in an hour.\n click: %s.' % (
         user.token, url)
     sendmail(username, 'cves register mail', body)
@@ -100,7 +100,7 @@ def retrieve(username):
     sess.commit()
 
     cfg = app.config['cfg']
-    url = '%s/retrieve?token=%s' % (cfg.get('main', 'baseurl'), user.token)
+    url = '%s/retrieve?token=%s' % (cfg.get('web', 'baseurl'), user.token)
     body = 'Retrieve password for cves, here is your token: %s. Use it in an hour.\n click: %s.' % (
         user.token, url)
     sendmail(username, 'retrieve password', body)

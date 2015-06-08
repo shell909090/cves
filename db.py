@@ -73,7 +73,7 @@ class Readed(Base):
     ts = Column(DateTime, server_default=sqlalchemy.text('CURRENT_TIMESTAMP'))
 
 class HttpCache(Base):
-    __tablename__ = 'urletags'
+    __tablename__ = 'httpcache'
     id = Column(Integer, primary_key=True)
     url = Column(String, unique=True)
     etag = Column(String)

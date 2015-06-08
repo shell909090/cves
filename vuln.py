@@ -5,7 +5,7 @@
 @author: shell.xu
 '''
 import re, logging, cStringIO
-from email.mime import MIMEText
+from email.mime.text import MIMEText
 import utils, db
 
 def version_compare(v1, v2):
@@ -33,7 +33,10 @@ def merge_prod(prod):
         for n in set(re_split.split(k)):
             rslt.setdefault(n, []).append(v)
     for k, v in rslt.items():
-        if 'all' in v: rslt[k] = 'all'
+        if 'all' in v:
+            rslt[k] = 'all'
+        else:
+            rslt[k] = sorted(v, cmp=version_compare)[0]
     return rslt
 
 class ChanVulns(object):
@@ -59,34 +62,36 @@ class ChanVulns(object):
         return v['name'] not in self.readed
 
     def f_vuln(self, vuln):
-        for n in set(re_split.split(vuln['produce'])):
-            if n not in self.prod: continue
-            vs = self.prod[n]
-            if vs == 'all': return True
-            vers = vuln['vers']
-            for v in vs:
-                if version_compare(v, vers[-1]) <= 0 and version_compare(v, vers[0]) > 0:
-                    logging.debug('{}({}) in {} - {}'.format(
-                        vuln['produce'], v, vers[0], vers[-1]))
-                    return True
+        for kw in set(re_split.split(vuln['produce'])):
+            if kw not in self.prod: continue
+            logging.debug('keyword matched: ' + kw)
+            kwver = self.prod[kw]
+            if kwver == 'all':
+                logging.debug('keyword {} matched for version all.'.format(kw))
+                return True
+            vulnver = vuln['vers']
+            if version_compare(kwver, vulnver) <= 0:
+                logging.debug('{}({}) in {}'.format(
+                    vuln['produce'], vulnver, kwver))
+                return True
 
     def update(self, src):
-        logging.info('chan {} in new source'.format(self.chan.id))
+        logging.debug('chan {} in new source {}'.format(self.chan.id, len(src)))
         src = filter(self.f_severity, src)
+        logging.debug('chan {} {} after severity.'.format(self.chan.id, len(src)))
         src = filter(self.f_readed, src)
+        logging.debug('chan {} {} after readed.'.format(self.chan.id, len(src)))
         src = filter(self.f_vuln, src)
+        logging.info('chan {} {} final.'.format(self.chan.id, len(src)))
         for vuln in src:
             self.vulns.append(vuln)
 
     def format(self):
         stream = cStringIO.StringIO()
         for vuln in self.vulns:
-            stream.write('%s [%s] %s (%s to %s)\n' % (
-                vuln['name'], vuln['severity'], vuln['produce'],
-                vuln['vers'][0], vuln['vers'][-1]))
-            stream.write('    %s\n' % vuln['desc'])
-            for r in vuln['refs']: stream.write('    * %s\n' % r)
-            stream.write('\n')
+            stream.write('%s [%s] %s (%s)\n%s' % (
+                vuln['name'], vuln['severity'],
+                vuln['produce'], vuln['vers'], vuln['desc']))
         return stream.getvalue().strip()
 
     def sendmail(self, mailsrv, sender):
@@ -118,5 +123,6 @@ def run(mailsrv, dryrun=False):
         for cv in cvs: cv.update(vulns)
     for cv in cvs:
         # send in mail
-        cv.sendmail(mailsrv, sender, dryrun)
+        print cv.vulns
+        cv.sendmail(mailsrv, sender)
         cv.mark_readed()

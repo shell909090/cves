@@ -17,24 +17,32 @@ def parse_nvdcve(stream):
     for e in tree.getroot():
         vs = e.find('ns:vuln_soft', namespaces={'ns': NS})
         if vs is None: continue
-        logging.debug('vuln {} hit'.format(e.get('name')))
+        # logging.debug('vuln {} get in'.format(e.get('name')))
         for p in vs:
             prod = p.get('name').lower()
             vers = [i.get('num') for i in p]
+
         desc = e.find('ns:desc', namespaces={'ns': NS})[0].text
         refs = [ref.get('url') for ref in e.find('ns:refs', namespaces={'ns': NS})]
         vers.sort(cmp=vuln.version_compare)
-        yield {'name': e.get('name'), 'produce': prod, 'vers': vers,
-               'severity': e.get('severity'), 'published': e.get('published'),
-               'desc': desc, 'refs': refs}
+
+        descbuf = cStringIO.StringIO()
+        descbuf.write('    %s\n' % desc)
+        for r in refs: descbuf.write('    * %s\n' % r)
+        descbuf.write('\n')
+
+        yield {'name': e.get('name'), 'produce': prod, 'vers': vers[-1],
+               'severity': e.get('severity'), 'desc': descbuf.getvalue()}
 
 def getlist():
-    r = utils.download_cached(URL,
-                        timeout=utils.cfg.getfloat('main', 'timeout'),
-                        retry=utils.cfg.getint('main', 'retry'))
-    if not r:
-        logging.info('url not modify, passed.')
-        return []
+    # r = utils.download_cached(URL,
+    #                     timeout=utils.cfg.getfloat('main', 'timeout'),
+    #                     retry=utils.cfg.getint('main', 'retry'))
+    # if not r:
+    #     logging.info('url not modify, passed.')
+    #     return []
+    with open('nvdcve-recent.xml', 'rb') as fi:
+        r = fi.read()
     cvelist = list(parse_nvdcve(cStringIO.StringIO(r)))
-    logging.debug('cvelist length {}'.format(len(cvelist)))
+    logging.info('cvelist length {}'.format(len(cvelist)))
     return cvelist
