@@ -4,7 +4,7 @@
 @date: 2015-05-13
 @author: shell.xu
 '''
-import os, sys, logging
+import smtplib, logging
 from ConfigParser import SafeConfigParser
 from contextlib import contextmanager
 import requests
@@ -31,12 +31,12 @@ def cfg_option(cfg, sec, opt):
 
 class FakeSMTP(object):
     def sendmail(self, sender, to, msg):
-        logging.info('sender: %s, to: %s' % (sender, to))
+        logging.info('sender: {}, to: {}'.format(sender, to))
         logging.info('msg: ' + msg)
 
 @contextmanager
-def with_emailconfig(cfg):
-    if cfg_option(cfg, 'email', 'dryrun'):
+def with_emailconfig(cfg, dryrun):
+    if dryrun:
         yield FakeSMTP()
         return
     srv = smtplib.SMTP(cfg.get('email', 'smtp'))
@@ -55,15 +55,15 @@ def download(url, headers=None, retry=3, timeout=10):
     if headers is None: headers = {}
     reqsess = requests.Session()
     reqsess.mount('http://', requests.adapters.HTTPAdapter(max_retries=retry))
-    logging.info('download %s.' % url)
+    logging.info('download {}.'.format(url))
     return reqsess.get(url, headers=headers, timeout=timeout)
 
 def download_cached(url, retry=3, timeout=10):
+    import db
     headers = {}
-
-    ue = sess.query(HttpCache).filter_by(url=url).scalar()
+    ue = sess.query(db.HttpCache).filter_by(url=url).scalar()
     if ue:
-        logging.debug('etag found: %s' % ue.etag)
+        logging.debug('etag found: ' + ue.etag)
         headers['If-None-Match'] = ue.etag
         # TODO: if modified since
 
@@ -75,7 +75,7 @@ def download_cached(url, retry=3, timeout=10):
     
     if 'Etag' in r.headers:
         # TODO: if modified since
-        sess.add(sess.merge(HttpCache(url=url, etag=r.headers['Etag'])))
+        sess.add(sess.merge(db.HttpCache(url=url, etag=r.headers['Etag'])))
         sess.commit()
 
     return r.content

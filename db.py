@@ -4,11 +4,11 @@
 @date: 2014-07-31
 @author: shell.xu
 '''
-import os, sys, time, random, string
-import bcrypt, sqlalchemy, utils, cves
-from sqlalchemy import desc, or_, Table, Column, Integer, String
-from sqlalchemy import DateTime, Boolean, ForeignKey, UniqueConstraint
-from sqlalchemy.orm import relationship, backref
+import time, random, string
+import bcrypt, sqlalchemy
+from sqlalchemy import Column, Integer, String
+from sqlalchemy import DateTime, ForeignKey
+from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 
 __all__ = [
@@ -24,7 +24,7 @@ def check_pass(p, h):
     return bcrypt.hashpw(p, h) == h
 
 def gentoken(l):
-    return ''.join([random.choice(string.letters) for i in xrange(l)])
+    return ''.join([random.choice(string.letters) for _ in xrange(l)])
 
 class Users(Base):
     __tablename__ = 'users'

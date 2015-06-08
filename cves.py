@@ -4,9 +4,8 @@
 @date: 2013-12-20
 @author: shell.xu
 '''
-import re, os, time, json, gzip, smtplib
-import logging, datetime, cStringIO
-from os import path
+import logging, cStringIO
+import utils, vuln
 
 NS  = 'http://nvd.nist.gov/feeds/cve/1.2'
 URL = 'http://nvd.nist.gov/download/nvdcve-recent.xml'
@@ -18,7 +17,7 @@ def parse_nvdcve(stream):
     for e in tree.getroot():
         vs = e.find('ns:vuln_soft', namespaces={'ns': NS})
         if vs is None: continue
-        logging.debug('vuln %s hit' % e.get('name'))
+        logging.debug('vuln {} hit'.format(e.get('name')))
         for p in vs:
             prod = p.get('name').lower()
             vers = [i.get('num') for i in p]
@@ -30,12 +29,12 @@ def parse_nvdcve(stream):
                'desc': desc, 'refs': refs}
 
 def getlist():
-    r = download_cached(URL,
+    r = utils.download_cached(URL,
                         timeout=utils.cfg.getfloat('main', 'timeout'),
                         retry=utils.cfg.getint('main', 'retry'))
     if not r:
         logging.info('url not modify, passed.')
         return []
     cvelist = list(parse_nvdcve(cStringIO.StringIO(r)))
-    logging.debug('cvelist length %d' % len(cvelist))
+    logging.debug('cvelist length {}'.format(len(cvelist)))
     return cvelist

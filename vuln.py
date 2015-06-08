@@ -4,7 +4,9 @@
 @date: 2015-06-05
 @author: shell.xu
 '''
-import os, sys
+import re, logging, cStringIO
+from email.mime import MIMEText
+import utils, db
 
 def version_compare(v1, v2):
     vs1 = v1.split('.'); vs2 = v2.split('.')
@@ -38,20 +40,20 @@ class ChanVulns(object):
 
     def __init__(self, chan, dryrun):
         self.chan, self.dryrun = chan, dryrun
-        self.severity = db.SM[s.lower()]
+        self.severity = db.SM[chan.severity.lower()]
         self.vulns, self.readed, self.prod = [], set(), []
-        for p in sess.query(Produces).filter_by(chan=self.chan):
+        for p in utils.sess.query(db.Produces).filter_by(chan=self.chan):
             self.prod.append((p.prod, p.ver))
         self.prod = merge_prod(self.prod)
         if not dryrun:
-            for r in utils.sess.query(Readed).filter_by(chan=chan):
+            for r in utils.sess.query(db.Readed).filter_by(chan=chan):
                 self.readed.add(r.cve)
 
     def f_severity(self, v):
         if v.get('severity') is None:
-            logging.warning('severity of valu is none: %s' % str(v))
+            logging.warning('severity of valu is none: ' + str(v))
             return True
-        return db.SM[v['severity'].lower()] >= m
+        return db.SM[v['severity'].lower()] >= self.severity
 
     def f_readed(self, v):
         return v['name'] not in self.readed
@@ -59,19 +61,20 @@ class ChanVulns(object):
     def f_vuln(self, vuln):
         for n in set(re_split.split(vuln['produce'])):
             if n not in self.prod: continue
-            vs = prod[n]
+            vs = self.prod[n]
             if vs == 'all': return True
             vers = vuln['vers']
             for v in vs:
                 if version_compare(v, vers[-1]) <= 0 and version_compare(v, vers[0]) > 0:
-                    logging.debug('%s(%s) in %s - %s' % (vuln['produce'], v, vers[0], vers[-1]))
+                    logging.debug('{}({}) in {} - {}'.format(
+                        vuln['produce'], v, vers[0], vers[-1]))
                     return True
 
-    def update(self, sources):
-        logging.info('chan %s in new source' % self.chan.id)
+    def update(self, src):
+        logging.info('chan {} in new source'.format(self.chan.id))
         src = filter(self.f_severity, src)
         src = filter(self.f_readed, src)
-        src = filter(vuln(merge_prod(prod)), src)
+        src = filter(self.f_vuln, src)
         for vuln in src:
             self.vulns.append(vuln)
 
@@ -93,26 +96,27 @@ class ChanVulns(object):
             print body
             return
         msg = MIMEText(body)
-        msg['Subject'] = 'CVE for %s' % cv.chan.name
+        msg['Subject'] = 'CVE for %s' % self.chan.name
         msg['From'] = sender
         # FIXME: cc list
-        msg['To'] = cv.chan.user.username
-        logging.info('send email to %s' % msg['To'])
+        msg['To'] = self.chan.user.username
+        logging.info('send email to ' + msg['To'])
         mailsrv.sendmail(sender, msg['To'].split(','), msg.as_string())
 
-    def readed(self,):
+    def mark_readed(self):
         if self.dryrun: return
         for vuln in self.vulns:
-            utils.sess.add(Readed(chan=self.chan, cve=vuln['name']))
+            utils.sess.add(db.Readed(chan=self.chan, cve=vuln['name']))
         utils.sess.commit()
 
 def run(mailsrv, dryrun=False):
+    import cves
     sender = utils.cfg.get('email', 'mail')
-    cvs = [ChanVulns(chan, dryrun) for chan in utils.sess.query(Channels)]
+    cvs = [ChanVulns(chan, dryrun) for chan in utils.sess.query(db.Channels)]
     for src in [cves.getlist,]:
         vulns = src()
         for cv in cvs: cv.update(vulns)
     for cv in cvs:
         # send in mail
         cv.sendmail(mailsrv, sender, dryrun)
-        self.readed()
+        cv.mark_readed()

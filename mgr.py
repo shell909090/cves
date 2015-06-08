@@ -4,12 +4,11 @@
 @date: 2014-08-01
 @author: shell.xu
 '''
-import os, sys, logging
+import logging
 from os import path
 import bottle, cves
 from bottle import route, post, template, request, response, redirect
-from db import *
-import usr
+import db, usr
 
 logger = logging.getLogger('channel')
 app = bottle.default_app()
@@ -19,8 +18,8 @@ basepath = app.config['basepath']
 @route(basepath + '/')
 @usr.chklogin()
 def _list(session):
-    chs = sess.query(Channels).filter_by(
-        username=session['username']).order_by(Channels.id)
+    chs = sess.query(db.Channels).filter_by(
+        username=session['username']).order_by(db.Channels.id)
     return template('chs.html', chs=chs)
 
 @route(path.join(basepath, 'addchan'))
@@ -30,20 +29,20 @@ def _addchan(session):
 
 @post(path.join(basepath, 'addchan'))
 @usr.chklogin()
-def _addchan(session):
+def _addchan_post(session):
     severity = request.forms.get('severity')
-    if severity not in cves.SM: return 'invalid severity'
-    sess.add(Channels(
+    if severity not in db.SM: return 'invalid severity'
+    sess.add(db.Channels(
         name=request.forms.get('name'),
         username=session['username'],
         severity=severity))
     sess.commit()
     return redirect('.')
 
-@route(path.join(basepath, 'del/<id:int>'))
+@route(path.join(basepath, 'del/<chid:int>'))
 @usr.chklogin()
-def _del(session, id):
-    ch = sess.query(Channels).filter_by(id=id).scalar()
+def _del(session, chid):
+    ch = sess.query(db.Channels).filter_by(id=chid).scalar()
     if not ch: return 'channel not exists.'
     if ch.username != session['username']:
         return 'channel not belongs to you'
@@ -52,70 +51,70 @@ def _del(session, id):
     sess.commit()
     return redirect('..')
 
-@route(path.join(basepath, 'sev/<id:int>'))
+@route(path.join(basepath, 'sev/<chid:int>'))
 @usr.chklogin()
-def _sev(session, id):
-    ch = sess.query(Channels).filter_by(id=id).scalar()
+def _sev(session, chid):
+    ch = sess.query(db.Channels).filter_by(id=chid).scalar()
     if not ch: return 'channel not exists.'
     if ch.username != session['username']:
         return 'channel not belongs to you'
 
     return template('sev.html', ch=ch)
 
-@post(path.join(basepath, 'sev/<id:int>'))
+@post(path.join(basepath, 'sev/<chid:int>'))
 @usr.chklogin()
-def _sev(session, id):
-    ch = sess.query(Channels).filter_by(id=id).scalar()
+def _sev_post(session, chid):
+    ch = sess.query(db.Channels).filter_by(id=chid).scalar()
     if not ch: return 'channel not exists.'
     if ch.username != session['username']:
         return 'channel not belongs to you'
 
     severity = request.forms.get('severity')
-    if severity not in cves.SM: return 'invalid severity'
+    if severity not in db.SM: return 'invalid severity'
     ch.severity = severity
     sess.commit()
     return redirect('..')
 
-@route(path.join(basepath, 'edit/<id:int>'))
+@route(path.join(basepath, 'edit/<chid:int>'))
 @usr.chklogin()
-def _edit(session, id):
-    ch = sess.query(Channels).filter_by(id=id).scalar()
+def _edit(session, chid):
+    ch = sess.query(db.Channels).filter_by(id=chid).scalar()
     if not ch: return 'channel not exists.'
     if ch.username != session['username']:
         return 'channel not belongs to you'
 
-    return template('imp.html', data=''.join(getprods(id)))
+    return template('imp.html', data=''.join(getprods(chid)))
 
 def import_stream(chan, stream):
     for line in stream:
         line = line.strip()
         if not line: continue
         prod, ver = line.split(' ', 1)
-        yield Produces(chan=chan, prod=prod, ver=ver)
+        yield db.Produces(chan=chan, prod=prod, ver=ver)
 
-@post(path.join(basepath, 'edit/<id:int>'))
+@post(path.join(basepath, 'edit/<chid:int>'))
 @usr.chklogin()
-def _edit(session, id):
-    ch = sess.query(Channels).filter_by(id=id).scalar()
+def _edit_post(session, chid):
+    ch = sess.query(db.Channels).filter_by(id=chid).scalar()
     if not ch: return 'channel not exists.'
     if ch.username != session['username']:
         return 'channel not belongs to you'
 
-    sess.query(Produces).filter_by(chanid=id).delete()
+    sess.query(db.Produces).filter_by(chanid=chid).delete()
     for p in import_stream(ch, request.forms['data'].splitlines()):
         sess.add(sess.merge(p))
     sess.commit()
     return redirect('..')
 
-@route(path.join(basepath, 'imp/<id:int>'))
+@route(path.join(basepath, 'imp/<chid:int>'))
 @usr.chklogin()
-def _import(session, id):
+def _import(session, chid):
     return template('imp.html', data='')
 
-@post(path.join(basepath, 'imp/<id:int>'))
+@post(path.join(basepath, 'imp/<chid:int>'))
 @usr.chklogin()
-def _import(session, id):
-    ch = sess.query(Channels).filter_by(id=id).scalar()
+def _import_post(session, chid):
+    ch = sess.query(db.Channels).filter_by(id=chid).scalar()
     if not ch: return 'channel not exists.'
     if ch.username != session['username']:
         return 'channel not belongs to you'
@@ -125,42 +124,43 @@ def _import(session, id):
     sess.commit()
     return redirect('..')
 
-def getprods(id):
-    prods = list(sess.query(Produces).filter_by(chanid=id))
+def getprods(chid):
+    prods = list(sess.query(db.Produces).filter_by(chanid=chid))
     for i in sorted(prods, key=lambda x:x.prod):
         yield '%s %s\n' % (i.prod, i.ver)
 
-@route(path.join(basepath, 'exp/<id:int>'))
+@route(path.join(basepath, 'exp/<chid:int>'))
 @usr.chklogin()
-def _export(session, id):
-    ch = sess.query(Channels).filter_by(id=id).scalar()
+def _export(session, chid):
+    ch = sess.query(db.Channels).filter_by(id=chid).scalar()
     if not ch: return 'channel not exists.'
     if ch.username != session['username']:
         return 'channel not belongs to you'
 
     response.set_header('Content-Type', 'text/plain')
-    return getprods(id)
+    return getprods(chid)
 
-@route(path.join(basepath, 'clean/<id:int>'))
+@route(path.join(basepath, 'clean/<chid:int>'))
 @usr.chklogin()
-def _cleanup(session, id):
-    ch = sess.query(Channels).filter_by(id=id).scalar()
+def _cleanup(session, chid):
+    ch = sess.query(db.Channels).filter_by(id=chid).scalar()
     if not ch: return 'channel not exists.'
     if ch.username != session['username']:
         return 'channel not belongs to you'
 
-    sess.query(Readed).filter_by(chanid=id).delete()
+    sess.query(db.Readed).filter_by(chanid=chid).delete()
     sess.commit()
     return redirect('..')
 
-@route(path.join(basepath, 'run/<id:int>'))
+@route(path.join(basepath, 'run/<chid:int>'))
 @usr.chklogin()
-def _run(session, id):
-    ch = sess.query(Channels).filter_by(id=id).scalar()
+def _run(session, chid):
+    ch = sess.query(db.Channels).filter_by(id=chid).scalar()
     if not ch: return 'channel not exists.'
     if ch.username != session['username']:
         return 'channel not belongs to you'
 
+    # FIXME: rewrite
     cfg = app.config['cfg']
     cvelist = list(cves.getcves(cfg))
     response.set_header('Content-Type', 'text/plain')

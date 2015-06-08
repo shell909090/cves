@@ -5,17 +5,20 @@
 @author: shell.xu
 @version: 0.8.1
 '''
-import os, sys, base64, getopt, logging
+import sys, getopt
 from os import path
-import bottle, utils, cves
-from beaker.middleware import SessionMiddleware
 import sqlalchemy, sqlalchemy.orm
+import bottle 
+from beaker.middleware import SessionMiddleware
+import db, utils, vuln
+
+application = None
+optdict     = None
 
 def built_db():
-    import db
-    db.Base.metadata.create_all(engine)
+    db.Base.metadata.create_all(utils.engine)
     if '-d' in optdict:
-        utils.sess.add(Users(username='guest@mail.com', passwd=crypto_pass('123')))
+        utils.sess.add(db.Users(username='guest@mail.com', passwd=db.crypto_pass('123')))
         utils.sess.commit()
 
 def cron_job():
@@ -24,13 +27,13 @@ def cron_job():
         vuln.run(srv, dryrun)
 
     # remove readed record for more then half a year
-    utils.sess.query(Readed).filter(Readed.ts < '"CURRENT_TIMESTAMP - 180 * 86400"').delete()
+    utils.sess.query(db.Readed).filter(db.Readed.ts < '"CURRENT_TIMESTAMP - 180 * 86400"').delete()
     utils.sess.commit()
 
 def web_main():
     app = bottle.default_app()
-    app.config['cfg'] = cfg
-    app.config['db.engine'] = engine
+    app.config['cfg'] = utils.cfg
+    app.config['db.engine'] = utils.engine
     app.config['db.session'] = utils.sess
 
     session_opts = {
@@ -69,16 +72,13 @@ def main():
     cfgpathes = ['cves.ini', '/etc/cves.ini']
     if '-c' in optdict:
         cfgpathes.insert(0, optdict['-c'])
-    cfg = utils.getcfg(cfgpathes)
-    utils.cfg = cfg
+    utils.cfg = utils.getcfg(cfgpathes)
 
-    utils.initlog(cfg.get('log', 'level'), cfg.get('log', 'file'))
+    utils.initlog(utils.cfg.get('log', 'level'), utils.cfg.get('log', 'file'))
 
-    global engine
-    echo = cfg.has_option('db', 'echo') and cfg.getboolean('db', 'echo')
-    engine = sqlalchemy.create_engine(cfg.get('db', 'url'), echo=echo)
-    sess = sqlalchemy.orm.sessionmaker(bind=engine)()
-    utils.sess = sess
+    echo = utils.cfg.has_option('db', 'echo') and utils.cfg.getboolean('db', 'echo')
+    utils.engine = sqlalchemy.create_engine(utils.cfg.get('db', 'url'), echo=echo)
+    utils.sess = sqlalchemy.orm.sessionmaker(bind=utils.engine)()
 
     if '-j' in optdict:
         return cron_job()
