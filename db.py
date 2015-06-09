@@ -55,21 +55,14 @@ class Channels(Base):
     username = Column(String, ForeignKey('users.username'))
     user = relationship("Users")
     severity = Column(String)
-
-class Produces(Base):
-    __tablename__ = 'produces'
-    id = Column(Integer, primary_key=True)
-    chanid = Column(Integer, ForeignKey('channels.id'))
-    chan = relationship("Channels", backref='prods')
-    prod = Column(String)
-    ver = Column(String)
+    produces = Column(String)
 
 class Readed(Base):
     __tablename__ = 'readed'
     id = Column(Integer, primary_key=True)
     chanid = Column(Integer, ForeignKey('channels.id'))
     chan = relationship("Channels", backref='readed')
-    cve = Column(String)
+    name = Column(String)
     ts = Column(DateTime, server_default=sqlalchemy.text('CURRENT_TIMESTAMP'))
 
 class HttpCache(Base):

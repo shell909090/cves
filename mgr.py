@@ -85,13 +85,6 @@ def _edit(session, chid):
 
     return template('imp.html', data=''.join(getprods(chid)))
 
-def import_stream(chan, stream):
-    for line in stream:
-        line = line.strip()
-        if not line: continue
-        prod, ver = line.split(' ', 1)
-        yield db.Produces(chan=chan, prod=prod, ver=ver)
-
 @post(path.join(basepath, 'edit/<chid:int>'))
 @usr.chklogin()
 def _edit_post(session, chid):
@@ -100,9 +93,8 @@ def _edit_post(session, chid):
     if ch.username != session['username']:
         return 'channel not belongs to you'
 
-    sess.query(db.Produces).filter_by(chanid=chid).delete()
-    for p in import_stream(ch, request.forms['data'].splitlines()):
-        sess.add(sess.merge(p))
+    produces = set(request.forms['data'].splitlines())
+    ch.produces = '\n'.join(sorted(list(produces)))
     sess.commit()
     return redirect('..')
 
@@ -119,15 +111,10 @@ def _import_post(session, chid):
     if ch.username != session['username']:
         return 'channel not belongs to you'
 
-    for p in import_stream(ch, request.forms['data'].splitlines()):
-        sess.add(sess.merge(p))
+    produces = set(ch.produces.splitlines()) + set(request.forms['data'].splitlines())
+    ch.produces = '\n'.join(sorted(list(produces)))
     sess.commit()
     return redirect('..')
-
-def getprods(chid):
-    prods = list(sess.query(db.Produces).filter_by(chanid=chid))
-    for i in sorted(prods, key=lambda x:x.prod):
-        yield '%s %s\n' % (i.prod, i.ver)
 
 @route(path.join(basepath, 'exp/<chid:int>'))
 @usr.chklogin()
@@ -138,7 +125,7 @@ def _export(session, chid):
         return 'channel not belongs to you'
 
     response.set_header('Content-Type', 'text/plain')
-    return getprods(chid)
+    return ch.produces
 
 @route(path.join(basepath, 'clean/<chid:int>'))
 @usr.chklogin()

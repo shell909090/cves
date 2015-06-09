@@ -78,4 +78,4 @@ def download_cached(url, retry=3, timeout=10):
         sess.add(sess.merge(db.HttpCache(url=url, etag=r.headers['Etag'])))
         sess.commit()
 
-    return r.content
+    return r

@@ -6,33 +6,30 @@
 '''
 import logging, cStringIO
 import utils, vuln
+from lxml import etree
 
 NS  = 'http://nvd.nist.gov/feeds/cve/1.2'
 URL = 'http://nvd.nist.gov/download/nvdcve-recent.xml'
 
 def parse_nvdcve(stream):
-    from lxml import etree
-    logging.debug('new stream')
+    logging.debug('parse cve xml')
     tree = etree.parse(stream)
-    for e in tree.getroot():
+    for e in tree.iterfind('ns:entry', namespaces={'ns': NS}):
         vs = e.find('ns:vuln_soft', namespaces={'ns': NS})
         if vs is None: continue
-        # logging.debug('vuln {} get in'.format(e.get('name')))
-        for p in vs:
-            prod = p.get('name').lower()
-            vers = [i.get('num') for i in p]
+        prods = [p.get('name').lower() for p in vs]
 
         desc = e.find('ns:desc', namespaces={'ns': NS})[0].text
         refs = [ref.get('url') for ref in e.find('ns:refs', namespaces={'ns': NS})]
-        vers.sort(cmp=vuln.version_compare)
 
         descbuf = cStringIO.StringIO()
         descbuf.write('    %s\n' % desc)
-        for r in refs: descbuf.write('    * %s\n' % r)
+        for r in refs:
+            descbuf.write('    * %s\n' % r)
         descbuf.write('\n')
 
-        yield {'name': e.get('name'), 'produce': prod, 'vers': vers[-1],
-               'severity': e.get('severity'), 'desc': descbuf.getvalue()}
+        yield {'name': e.get('name'), 'severity': e.get('severity'),
+               'produces': '\n'.join(prods), 'desc': descbuf.getvalue()}
 
 def getlist():
     # r = utils.download_cached(URL,
@@ -42,7 +39,13 @@ def getlist():
     #     logging.info('url not modify, passed.')
     #     return []
     with open('nvdcve-recent.xml', 'rb') as fi:
-        r = fi.read()
-    cvelist = list(parse_nvdcve(cStringIO.StringIO(r)))
+        cvelist = list(parse_nvdcve(fi))
+    # cvelist = list(parse_nvdcve(r.raw))
     logging.info('cvelist length {}'.format(len(cvelist)))
     return cvelist
+
+def main():
+    import pprint
+    pprint.pprint(getlist())
+
+if __name__ == '__main__': main()
