@@ -25,7 +25,7 @@ class ChanVulns(object):
     def __init__(self, chan, dryrun):
         self.chan, self.dryrun = chan, dryrun
         self.severity = db.SM[chan.severity.lower()]
-        self.vulns, self.readed = set(), set()
+        self.vulns, self.readed = {}, set()
         self.prod_kw = make_prod_keywords(self.chan.produces.splitlines())
         if not dryrun:
             for r in utils.sess.query(db.Readed).filter_by(chan=chan):
@@ -52,14 +52,15 @@ class ChanVulns(object):
         vulns = filter(self.f_readed, vulns)
         logging.debug('chan {} {} after readed.'.format(self.chan.id, len(vulns)))
 
-        self.vulns |= vulns
+        for v in vulns:
+            self.vulns[v['name']] = v
 
     def format(self):
         stream = cStringIO.StringIO()
-        for vuln in self.vulns:
-            stream.write('%s [%s] %s (%s)\n%s' % (
-                vuln['name'], vuln['severity'],
-                vuln['produce'], vuln['vers'], vuln['desc']))
+        for vuln in self.vulns.values():
+            stream.write('%s %s%s\n%s' % (
+                vuln['name'], '[%s] ' % vuln['severity'] if 'severity' in vuln else '',
+                vuln['produces'].replace('\n', ';'), vuln['desc']))
         return stream.getvalue().strip()
 
     def sendmail(self, mailsrv, sender):
@@ -71,8 +72,10 @@ class ChanVulns(object):
         msg = MIMEText(body)
         msg['Subject'] = 'CVE for %s' % self.chan.name
         msg['From'] = sender
-        # FIXME: cc list
-        msg['To'] = self.chan.user.username
+        tolist = [self.chan.user.username]
+        if self.chan.user.cclist:
+            tolist.extend(self.chan.user.cclist.splitlines())
+        msg['To'] = ','.join(tolist)
         logging.info('send email to ' + msg['To'])
         mailsrv.sendmail(sender, msg['To'].split(','), msg.as_string())
 
@@ -86,7 +89,8 @@ def run(mailsrv, dryrun=False):
     import cve, usn, dsa
     sender = utils.cfg.get('email', 'mail')
     cvs = [ChanVulns(chan, dryrun) for chan in utils.sess.query(db.Channels)]
-    for src in [cve.getlist, usn.getlist, dsa.getlist]:
+    # dsa.getlist
+    for src in [cve.getlist, usn.getlist]:
         vulns = src()
         for cv in cvs: cv.update(vulns)
     for cv in cvs:

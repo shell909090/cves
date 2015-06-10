@@ -5,9 +5,9 @@
 @author: shell.xu
 '''
 import logging, cStringIO
-import utils, vuln
 from lxml import etree
 from lxml.cssselect import CSSSelector
+import utils
 
 NS  = 'http://purl.org/rss/1.0/'
 URL = 'https://www.debian.org/security/dsa'
@@ -15,13 +15,10 @@ URL = 'https://www.debian.org/security/dsa'
 sel_title = CSSSelector('head title')
 sel_packages = CSSSelector('div#content dd a')
 
-def parse_dsa(url):
-    r = utils.download(url)
-    # r = utils.download_cached(url,
-    #                     timeout=utils.cfg.getfloat('main', 'timeout'),
-    #                     retry=utils.cfg.getint('main', 'retry'))
+def parse_dsa(dsaurl):
+    r = utils.download_cached(dsaurl)
     if not r:
-        logging.info('url not modify, passed.')
+        logging.info('dsa info url ({}) not modify, passed.'.format(dsaurl))
         return
 
     tree = etree.HTML(r.content)
@@ -44,33 +41,23 @@ def parse_dsa(url):
         descbuf.write('    * {}\n'.format(url))
     for cve, url in cves:
         descbuf.write('    # {}\n    * {}\n'.format(cve, url))
-    descbuf.write('    * {}\n\n'.format(url))
+    descbuf.write('    * {}\n\n'.format(dsaurl))
 
     return {'name': name, 'produces': '\n'.join(prods), 'desc': descbuf.getvalue()}
 
-def parse_list(stream):
+def parse_list():
+    r = utils.download_cached(URL)
+    if not r:
+        logging.info('dsa url not modify, passed.')
+        return
+
     logging.debug('parse dsa xml')
-    tree = etree.parse(stream)
+    tree = etree.fromstring(r.content)
     for e in tree.iterfind('ns:item/ns:link', namespaces={'ns': NS}):
         r = parse_dsa(e.text)
         if r: yield r
 
 def getlist():
-    # r = utils.download_cached(URL,
-    #                     timeout=utils.cfg.getfloat('main', 'timeout'),
-    #                     retry=utils.cfg.getint('main', 'retry'))
-    # if not r:
-    #     logging.info('url not modify, passed.')
-    #     return []
-    with open('dsa.xml', 'rb') as fi:
-        dsalist = list(parse_list(fi))
-        # dsalist = list(parse_list(r.raw))
+    dsalist = list(parse_list())
     logging.info('dsalist length {}'.format(len(dsalist)))
     return dsalist
-    
-def main():
-    import pprint, logging
-    logging.basicConfig(level='DEBUG')
-    pprint.pprint(getlist())
-
-if __name__ == '__main__': main()

@@ -12,8 +12,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 
 __all__ = [
-    'crypto_pass', 'check_pass', 'gentoken',
-    'Users', 'Channels', 'Produces', 'Readed']
+    'crypto_pass', 'check_pass', 'gentoken', 'Users', 'Channels', 'Readed']
 
 Base = declarative_base()
 
@@ -67,7 +66,6 @@ class Readed(Base):
 
 class HttpCache(Base):
     __tablename__ = 'httpcache'
-    id = Column(Integer, primary_key=True)
-    url = Column(String, unique=True)
+    url = Column(String, primary_key=True)
     etag = Column(String)
     last_change = Column(DateTime, server_default=sqlalchemy.text('CURRENT_TIMESTAMP'))

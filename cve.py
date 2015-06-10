@@ -5,15 +5,23 @@
 @author: shell.xu
 '''
 import logging, cStringIO
-import utils, vuln
 from lxml import etree
+import utils
 
 NS  = 'http://nvd.nist.gov/feeds/cve/1.2'
 URL = 'http://nvd.nist.gov/download/nvdcve-recent.xml'
 
-def parse_nvdcve(stream):
+def parse_nvdcve():
+    # r = utils.download_cached(URL)
+    # if not r:
+    #     logging.info('cve url not modify, passed.')
+    #     return
+
+    with open('nvdcve-recent.xml', 'rb') as fi:
+        tree = etree.parse(fi)
+
     logging.debug('parse cve xml')
-    tree = etree.parse(stream)
+    # tree = etree.fromstring(r.content)
     for e in tree.iterfind('ns:entry', namespaces={'ns': NS}):
         vs = e.find('ns:vuln_soft', namespaces={'ns': NS})
         if vs is None: continue
@@ -32,20 +40,6 @@ def parse_nvdcve(stream):
                'produces': '\n'.join(prods), 'desc': descbuf.getvalue()}
 
 def getlist():
-    # r = utils.download_cached(URL,
-    #                     timeout=utils.cfg.getfloat('main', 'timeout'),
-    #                     retry=utils.cfg.getint('main', 'retry'))
-    # if not r:
-    #     logging.info('url not modify, passed.')
-    #     return []
-    with open('nvdcve-recent.xml', 'rb') as fi:
-        cvelist = list(parse_nvdcve(fi))
-    # cvelist = list(parse_nvdcve(r.raw))
+    cvelist = list(parse_nvdcve())
     logging.info('cvelist length {}'.format(len(cvelist)))
     return cvelist
-
-def main():
-    import pprint
-    pprint.pprint(getlist())
-
-if __name__ == '__main__': main()

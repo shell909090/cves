@@ -6,7 +6,7 @@
 '''
 import logging
 from os import path
-import bottle, cves
+import bottle
 from bottle import route, post, template, request, response, redirect
 import db, usr
 
@@ -83,7 +83,7 @@ def _edit(session, chid):
     if ch.username != session['username']:
         return 'channel not belongs to you'
 
-    return template('imp.html', data=''.join(getprods(chid)))
+    return template('imp.html', data=ch.produces)
 
 @post(path.join(basepath, 'edit/<chid:int>'))
 @usr.chklogin()
@@ -101,6 +101,8 @@ def _edit_post(session, chid):
 @route(path.join(basepath, 'imp/<chid:int>'))
 @usr.chklogin()
 def _import(session, chid):
+    ch = sess.query(db.Channels).filter_by(id=chid).scalar()
+    if not ch: return 'channel not exists.'
     return template('imp.html', data='')
 
 @post(path.join(basepath, 'imp/<chid:int>'))
@@ -148,7 +150,8 @@ def _run(session, chid):
         return 'channel not belongs to you'
 
     # FIXME: rewrite
-    cfg = app.config['cfg']
-    cvelist = list(cves.getcves(cfg))
-    response.set_header('Content-Type', 'text/plain')
-    return ch.gen_body(cvelist, sess, dryrun=True)
+    # cfg = app.config['cfg']
+    # cvelist = list(cves.getcves(cfg))
+    # response.set_header('Content-Type', 'text/plain')
+    # return ch.gen_body(cvelist, sess, dryrun=True)
+    return ''

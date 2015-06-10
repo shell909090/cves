@@ -51,14 +51,18 @@ def with_emailconfig(cfg, dryrun):
     try: yield srv
     finally: srv.close()
 
-def download(url, headers=None, retry=3, timeout=10):
+def download(url, headers=None, retry=None, timeout=None):
     if headers is None: headers = {}
+    if retry is None:
+        retry = cfg.getint('main', 'retry')
+    if timeout is None:
+        timeout = cfg.getfloat('main', 'timeout')
     reqsess = requests.Session()
     reqsess.mount('http://', requests.adapters.HTTPAdapter(max_retries=retry))
     logging.info('download {}.'.format(url))
     return reqsess.get(url, headers=headers, timeout=timeout)
 
-def download_cached(url, retry=3, timeout=10):
+def download_cached(url, retry=None, timeout=None):
     import db
     headers = {}
     ue = sess.query(db.HttpCache).filter_by(url=url).scalar()
@@ -74,8 +78,8 @@ def download_cached(url, retry=3, timeout=10):
         return
     
     if 'Etag' in r.headers:
+        etag = r.headers['Etag']
+        sess.merge(db.HttpCache(url=url, etag=etag))
         # TODO: if modified since
-        sess.add(sess.merge(db.HttpCache(url=url, etag=r.headers['Etag'])))
         sess.commit()
-
     return r
