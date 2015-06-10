@@ -82,7 +82,7 @@ class ChanVulns(object):
     def mark_readed(self):
         if self.dryrun: return
         for vuln in self.vulns:
-            utils.sess.add(db.Readed(chan=self.chan, cve=vuln['name']))
+            utils.sess.add(db.Readed(chan=self.chan, name=vuln['name']))
         utils.sess.commit()
 
 def run(sources):
