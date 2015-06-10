@@ -30,7 +30,7 @@ def cron_job():
     utils.sess.query(db.Readed).filter(
         db.Readed.ts < '"CURRENT_TIMESTAMP - 180 * 86400"').delete()
     utils.sess.query(db.HttpCache).filter(
-        db.Readed.last_change < '"CURRENT_TIMESTAMP - 180 * 86400"').delete()
+        db.HttpCache.last_change < '"CURRENT_TIMESTAMP - 180 * 86400"').delete()
     utils.sess.commit()
 
 def web_main():
