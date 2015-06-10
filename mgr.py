@@ -149,9 +149,12 @@ def _run(session, chid):
     if ch.username != session['username']:
         return 'channel not belongs to you'
 
-    # FIXME: rewrite
-    # cfg = app.config['cfg']
-    # cvelist = list(cves.getcves(cfg))
-    # response.set_header('Content-Type', 'text/plain')
-    # return ch.gen_body(cvelist, sess, dryrun=True)
-    return ''
+    import vuln, utils
+    cv = vuln.ChanVulns(ch, dryrun=True)
+    sources = utils.cfg.get('main', 'sources')
+    for name in sources.split(','):
+        vulns = __import__(name).getlist(False)
+        cv.update(vulns)
+
+    response.set_header('Content-Type', 'text/plain')
+    return cv.format()

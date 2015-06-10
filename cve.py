@@ -11,17 +11,14 @@ import utils
 NS  = 'http://nvd.nist.gov/feeds/cve/1.2'
 URL = 'http://nvd.nist.gov/download/nvdcve-recent.xml'
 
-def parse_nvdcve():
-    # r = utils.download_cached(URL)
-    # if not r:
-    #     logging.info('cve url not modify, passed.')
-    #     return
-
-    with open('nvdcve-recent.xml', 'rb') as fi:
-        tree = etree.parse(fi)
+def parse_nvdcve(cache):
+    r = utils.download_cached(URL)
+    if cache and r.status_code == 304:
+        logging.info('cve url not modify, passed.')
+        return
 
     logging.debug('parse cve xml')
-    # tree = etree.fromstring(r.content)
+    tree = etree.fromstring(r.content)
     for e in tree.iterfind('ns:entry', namespaces={'ns': NS}):
         vs = e.find('ns:vuln_soft', namespaces={'ns': NS})
         if vs is None: continue
@@ -34,12 +31,16 @@ def parse_nvdcve():
         descbuf.write('    %s\n' % desc)
         for r in refs:
             descbuf.write('    * %s\n' % r)
-        descbuf.write('\n')
 
         yield {'name': e.get('name'), 'severity': e.get('severity'),
                'produces': '\n'.join(prods), 'desc': descbuf.getvalue()}
 
-def getlist():
-    cvelist = list(parse_nvdcve())
-    logging.info('cvelist length {}'.format(len(cvelist)))
-    return cvelist
+def getlist(cache):
+    try:
+        cvelist = list(parse_nvdcve(cache))
+        logging.info('cvelist length {}'.format(len(cvelist)))
+        return cvelist
+    except Exception as err:
+        import traceback
+        logging.error(traceback.format_exc())
+        return []

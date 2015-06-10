@@ -58,7 +58,7 @@ class ChanVulns(object):
     def format(self):
         stream = cStringIO.StringIO()
         for vuln in self.vulns.values():
-            stream.write('%s %s%s\n%s' % (
+            stream.write('%s %s%s\n%s\n' % (
                 vuln['name'], '[%s] ' % vuln['severity'] if 'severity' in vuln else '',
                 vuln['produces'].replace('\n', ';'), vuln['desc']))
         return stream.getvalue().strip()
@@ -85,15 +85,18 @@ class ChanVulns(object):
             utils.sess.add(db.Readed(chan=self.chan, cve=vuln['name']))
         utils.sess.commit()
 
-def run(mailsrv, dryrun=False):
+def run(sources):
     import cve, usn, dsa
-    sender = utils.cfg.get('email', 'mail')
+    dryrun = utils.cfg.getboolean('main', 'dryrun')
     cvs = [ChanVulns(chan, dryrun) for chan in utils.sess.query(db.Channels)]
-    # dsa.getlist
-    for src in [cve.getlist, usn.getlist]:
-        vulns = src()
+
+    for name in sources:
+        vulns = __import__(name).getlist(True)
         for cv in cvs: cv.update(vulns)
-    for cv in cvs:
-        # send in mail
-        cv.sendmail(mailsrv, sender)
-        cv.mark_readed()
+
+    # send in mail
+    with utils.with_emailconfig(utils.cfg, dryrun) as mailsrv:
+        sender = utils.cfg.get('email', 'mail')
+        for cv in cvs:
+            cv.sendmail(mailsrv, sender)
+            cv.mark_readed()

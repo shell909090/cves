@@ -15,7 +15,7 @@
     % include("nav.html")
     <div class="container">
       <form method="POST">
-	<textarea rows="30" cols="50" name="data">{{data}}</textarea>
+	<textarea rows="30" cols="50" name="data">{{'' if data is None else data}}</textarea>
 	<button class="btn" type="submit">commit</button>
       </form>
     <script type="text/javascript" src="{{app.config.get('basepath')}}/static/js/jquery-1.10.2.min.js" charset="utf-8"></script>

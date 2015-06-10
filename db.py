@@ -6,8 +6,7 @@
 '''
 import time, random, string
 import bcrypt, sqlalchemy
-from sqlalchemy import Column, Integer, String
-from sqlalchemy import DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, LargeBinary, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 
@@ -69,3 +68,4 @@ class HttpCache(Base):
     url = Column(String, primary_key=True)
     etag = Column(String)
     last_change = Column(DateTime, server_default=sqlalchemy.text('CURRENT_TIMESTAMP'))
+    data = Column(LargeBinary)

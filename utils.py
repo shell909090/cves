@@ -4,7 +4,7 @@
 @date: 2015-05-13
 @author: shell.xu
 '''
-import smtplib, logging
+import zlib, smtplib, logging
 from ConfigParser import SafeConfigParser
 from contextlib import contextmanager
 import requests
@@ -75,11 +75,16 @@ def download_cached(url, retry=None, timeout=None):
 
     if r.status_code == 304:
         logging.debug('not modify, use cache.')
-        return
+        f = lambda x: x
+        f.status_code = 304
+        f.content = zlib.decompress(ue.data)
+        print len(ue.data)
+        return f
     
     if 'Etag' in r.headers:
         etag = r.headers['Etag']
-        sess.merge(db.HttpCache(url=url, etag=etag))
+        sess.merge(db.HttpCache(
+            url=url, etag=etag, data=zlib.compress(r.content, 9)))
         # TODO: if modified since
         sess.commit()
     return r

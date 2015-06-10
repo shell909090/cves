@@ -16,11 +16,7 @@ sel_title = CSSSelector('head title')
 sel_packages = CSSSelector('div#content dd a')
 
 def parse_dsa(dsaurl):
-    r = utils.download_cached(dsaurl)
-    if not r:
-        logging.info('dsa info url ({}) not modify, passed.'.format(dsaurl))
-        return
-
+    r = utils.download(dsaurl)
     tree = etree.HTML(r.content)
 
     e = sel_title(tree)[0]
@@ -41,13 +37,13 @@ def parse_dsa(dsaurl):
         descbuf.write('    * {}\n'.format(url))
     for cve, url in cves:
         descbuf.write('    # {}\n    * {}\n'.format(cve, url))
-    descbuf.write('    * {}\n\n'.format(dsaurl))
+    descbuf.write('    * {}\n'.format(dsaurl))
 
     return {'name': name, 'produces': '\n'.join(prods), 'desc': descbuf.getvalue()}
 
-def parse_list():
+def parse_list(cache):
     r = utils.download_cached(URL)
-    if not r:
+    if cache and r.status_code == 304:
         logging.info('dsa url not modify, passed.')
         return
 
@@ -57,7 +53,12 @@ def parse_list():
         r = parse_dsa(e.text)
         if r: yield r
 
-def getlist():
-    dsalist = list(parse_list())
-    logging.info('dsalist length {}'.format(len(dsalist)))
-    return dsalist
+def getlist(cache):
+    try:
+        dsalist = list(parse_list(cache))
+        logging.info('dsalist length {}'.format(len(dsalist)))
+        return dsalist
+    except Exception as err:
+        import traceback
+        logging.error(traceback.format_exc())
+        return []

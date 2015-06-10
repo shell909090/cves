@@ -22,12 +22,15 @@ def built_db():
         utils.sess.commit()
 
 def cron_job():
-    dryrun = utils.cfg.getboolean('main', 'dryrun')
-    with utils.with_emailconfig(utils.cfg, dryrun) as srv:
-        vuln.run(srv, dryrun)
+    if '-s' in optdict: sources = optdict['-s']
+    else: sources = utils.cfg.get('main', 'sources')
+    vuln.run(sources.split(','))
 
-    # remove readed record for more then half a year
-    utils.sess.query(db.Readed).filter(db.Readed.ts < '"CURRENT_TIMESTAMP - 180 * 86400"').delete()
+    # remove readed record and http cache for more then half a year
+    utils.sess.query(db.Readed).filter(
+        db.Readed.ts < '"CURRENT_TIMESTAMP - 180 * 86400"').delete()
+    utils.sess.query(db.HttpCache).filter(
+        db.Readed.last_change < '"CURRENT_TIMESTAMP - 180 * 86400"').delete()
     utils.sess.commit()
 
 def web_main():
@@ -63,7 +66,7 @@ def web_main():
 
 def main():
     global optdict
-    optlist, args = getopt.getopt(sys.argv[1:], 'bc:dhj')
+    optlist, args = getopt.getopt(sys.argv[1:], 'bc:dhjs:')
     optdict = dict(optlist)
     if '-h' in optdict:
         print main.__doc__
