@@ -46,7 +46,6 @@ def web_main():
         'session.cookie_expires': 3600,
         'session.auto': True
     }
-    global application
     application = SessionMiddleware(app, session_opts)
 
     from urlparse import urlparse
@@ -60,9 +59,7 @@ def web_main():
 
     import usr
     import mgr
-
-    bottle.run(app=application, host=app.config['baseurl'].hostname,
-               port=app.config['baseurl'].port, reloader=True)
+    return application
 
 def main():
     global optdict
@@ -87,6 +84,10 @@ def main():
         return cron_job()
     elif '-b' in optdict:
         return built_db()
-    else: return web_main()
+    else:
+        application = web_main()
+        bottle.run(app=application, host=app.config['baseurl'].hostname,
+                   port=app.config['baseurl'].port, reloader=True)
 
 if __name__ == '__main__': main()
+else: application = web_main()
