@@ -61,7 +61,7 @@ def web_main():
     import mgr
     return application
 
-def main():
+def main(as_mod=False):
     global optdict
     optlist, args = getopt.getopt(sys.argv[1:], 'bc:dhjs:')
     optdict = dict(optlist)
@@ -84,10 +84,11 @@ def main():
         return cron_job()
     elif '-b' in optdict:
         return built_db()
-    else:
-        application = web_main()
-        bottle.run(app=application, host=app.config['baseurl'].hostname,
-                   port=app.config['baseurl'].port, reloader=True)
+
+    application = web_main()
+    if as_mod: return application
+    return bottle.run(app=application, host=app.config['baseurl'].hostname,
+                      port=app.config['baseurl'].port, reloader=True)
 
 if __name__ == '__main__': main()
-else: application = web_main()
+else: application = main(True)
