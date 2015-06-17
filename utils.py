@@ -78,7 +78,6 @@ def download_cached(url, retry=None, timeout=None):
         f = lambda x: x
         f.status_code = 304
         f.content = zlib.decompress(ue.data)
-        print len(ue.data)
         return f
     
     if 'Etag' in r.headers:
